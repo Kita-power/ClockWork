@@ -43,7 +43,7 @@ A web application built with Next.js and Supabase for authentication and data ma
    Both values can be found in your [Supabase project API settings](https://supabase.com/dashboard/project/_?showConnect=true).
 5. Start the dev server:
   ```bash
-   pnpm dev
+   npm dev
   ```
    Open [http://localhost:3000](http://localhost:3000).
 
