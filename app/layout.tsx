@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Inter, Manrope } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
@@ -26,8 +26,14 @@ export const metadata: Metadata = {
   },
 };
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-body",
+  display: "swap",
+  subsets: ["latin"],
+});
+
+const manrope = Manrope({
+  variable: "--font-display",
   display: "swap",
   subsets: ["latin"],
 });
@@ -39,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.className} antialiased`}>
+      <body className={`${inter.variable} ${manrope.variable} body-md antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { InfoIcon } from "lucide-react";
 import { FetchDataSteps } from "@/components/tutorial/fetch-data-steps";
 import { Suspense } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 async function UserDetails() {
   const supabase = await createClient();
@@ -18,26 +21,36 @@ async function UserDetails() {
 
 export default function ProtectedPage() {
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
-      <div className="w-full">
-        <div className="bg-accent text-sm p-3 px-5 rounded-md text-foreground flex gap-3 items-center">
-          <InfoIcon size="16" strokeWidth={2} />
+    <div className="flex w-full flex-1 flex-col gap-8">
+      <Card>
+        <CardContent className="flex items-center gap-3 pt-6 text-sm">
+          <InfoIcon />
           This is a protected page that you can only see as an authenticated
-          user
-        </div>
-      </div>
-      <div className="flex flex-col gap-2 items-start">
-        <h2 className="font-bold text-2xl mb-4">Your user details</h2>
-        <pre className="text-xs font-mono p-3 rounded border max-h-32 overflow-auto">
-          <Suspense>
-            <UserDetails />
-          </Suspense>
-        </pre>
-      </div>
-      <div>
-        <h2 className="font-bold text-2xl mb-4">Next steps</h2>
+          user.
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Your user details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <pre className="max-h-32 overflow-auto rounded-md border bg-muted/30 p-3 text-xs">
+            <Suspense>
+              <UserDetails />
+            </Suspense>
+          </pre>
+        </CardContent>
+      </Card>
+
+      <Separator />
+
+      <section className="flex flex-col gap-4">
+        <Badge variant="secondary" className="w-fit">
+          Next steps
+        </Badge>
         <FetchDataSteps />
-      </div>
+      </section>
     </div>
   );
 }
