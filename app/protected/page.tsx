@@ -35,7 +35,7 @@ export default function ProtectedPage() {
           <CardTitle className="text-xl">Your user details</CardTitle>
         </CardHeader>
         <CardContent>
-          <pre className="max-h-32 overflow-auto rounded-md border bg-muted/30 p-3 text-xs">
+          <pre className="max-h-100 overflow-auto rounded-md border bg-muted/30 p-3 text-xs">
             <Suspense>
               <UserDetails />
             </Suspense>

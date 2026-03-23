@@ -1,3 +1,6 @@
+"use client";
+
+import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +15,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 export default function AdminConfigurationPage() {
+  const currentUser = useUser();
+
   return (
     <Card className="mx-auto max-w-4xl">
       <CardHeader>
@@ -21,6 +26,19 @@ export default function AdminConfigurationPage() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {!currentUser.isLoading && !currentUser.isAuthenticated ? (
+          <p className="rounded-md border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+            You are not logged in. Please log in to use admin actions.
+          </p>
+        ) : null}
+        {!currentUser.isLoading &&
+        currentUser.isAuthenticated &&
+        !currentUser.isAdmin ? (
+          <p className="rounded-md border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+            Your account is not an active admin. Configuration changes are disabled.
+          </p>
+        ) : null}
+
         <div className="flex flex-col gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Weekly consultant submission deadline
@@ -58,7 +76,7 @@ export default function AdminConfigurationPage() {
           </p>
         </div>
 
-        <Button type="button" className="w-full">
+        <Button type="button" className="w-full" disabled={!currentUser.isAdmin}>
           Save Configuration
         </Button>
       </CardContent>

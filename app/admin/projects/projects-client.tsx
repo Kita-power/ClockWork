@@ -1,0 +1,483 @@
+"use client";
+
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  assignConsultantToProjectAction,
+  createAdminProjectAction,
+  listProjectConsultantsAction,
+  removeConsultantFromProjectAction,
+  setAdminProjectActiveAction,
+} from "./actions";
+import { useUser } from "@/hooks/use-user";
+
+type AdminProject = {
+  id: string;
+  name: string;
+  code: string;
+  is_active: boolean;
+  consultant_count: number;
+};
+
+type AdminUser = {
+  id: string;
+  full_name: string;
+  role: "consultant" | "manager" | "finance" | "admin";
+  is_active: boolean;
+};
+
+type AssignedConsultant = {
+  id: string;
+  full_name: string;
+  email: string;
+  is_active: boolean;
+  assigned_at: string;
+};
+
+export function AdminProjectsClient({
+  projects,
+  users,
+  initialError,
+}: {
+  projects: AdminProject[];
+  users: AdminUser[];
+  initialError: string | null;
+}) {
+  const router = useRouter();
+  const currentUser = useUser();
+  const [isPending, startTransition] = useTransition();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All statuses");
+  const [createName, setCreateName] = useState("");
+  const [createCode, setCreateCode] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedConsultantId, setSelectedConsultantId] = useState("");
+  const [assignedConsultants, setAssignedConsultants] = useState<
+    AssignedConsultant[]
+  >([]);
+  const [isLoadingConsultants, setIsLoadingConsultants] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
+
+  const filteredProjects = useMemo(() => {
+    const normalized = searchQuery.trim().toLowerCase();
+    return projects.filter((project) => {
+      const matchesSearch =
+        !normalized ||
+        project.name.toLowerCase().includes(normalized) ||
+        project.code.toLowerCase().includes(normalized);
+      const matchesStatus =
+        statusFilter === "All statuses" ||
+        (statusFilter === "Active" ? project.is_active : !project.is_active);
+      return matchesSearch && matchesStatus;
+    });
+  }, [projects, searchQuery, statusFilter]);
+  const selectedProject =
+    projects.find((project) => project.id === selectedProjectId) ?? null;
+  const consultantOptions = useMemo(
+    () => users.filter((user) => user.role === "consultant" && user.is_active),
+    [users],
+  );
+
+  useEffect(() => {
+    setSelectedConsultantId("");
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setAssignedConsultants([]);
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoadingConsultants(true);
+    setErrorMessage(null);
+
+    listProjectConsultantsAction(selectedProjectId).then((result) => {
+      if (!isMounted) return;
+      if (!result.ok) {
+        setAssignedConsultants([]);
+        setErrorMessage(result.error);
+      } else {
+        setAssignedConsultants(result.consultants);
+      }
+      setIsLoadingConsultants(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedProjectId]);
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <CardTitle>Project Management</CardTitle>
+          <CardDescription>
+            Create projects, update status, and review staffing counts.
+          </CardDescription>
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex flex-col gap-6">
+        {errorMessage ? (
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {errorMessage}
+          </p>
+        ) : null}
+        {!currentUser.isLoading && !currentUser.isAuthenticated ? (
+          <p className="rounded-md border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+            You are not logged in. Please log in to use admin actions.
+          </p>
+        ) : null}
+        {!currentUser.isLoading &&
+        currentUser.isAuthenticated &&
+        !currentUser.isAdmin ? (
+          <p className="rounded-md border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+            Your account is not an active admin. Project mutations are disabled.
+          </p>
+        ) : null}
+
+        <form
+          className="grid grid-cols-1 gap-3 lg:grid-cols-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setErrorMessage(null);
+            startTransition(async () => {
+              const result = await createAdminProjectAction({
+                name: createName,
+                code: createCode,
+              });
+              if (!result.ok) {
+                setErrorMessage(result.error);
+                return;
+              }
+              setCreateName("");
+              setCreateCode("");
+              router.refresh();
+            });
+          }}
+        >
+          <Input
+            type="text"
+            placeholder="Project name"
+            value={createName}
+            onChange={(event) => setCreateName(event.target.value)}
+          />
+          <Input
+            type="text"
+            placeholder="Unique project identifier"
+            value={createCode}
+            onChange={(event) => setCreateCode(event.target.value)}
+          />
+          <Input
+            type="text"
+            placeholder="Search projects"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+          <div className="flex gap-3">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="All statuses">All statuses</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Deactivated">Deactivated</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <Button type="submit" disabled={isPending || !currentUser.isAdmin}>
+              Create Project
+            </Button>
+          </div>
+        </form>
+
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Project Name</TableHead>
+                <TableHead>Identifier</TableHead>
+                <TableHead>Assigned Consultants</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProjects.map((project) => (
+                <TableRow
+                  key={project.id}
+                  className="cursor-pointer"
+                  onClick={() => setSelectedProjectId(project.id)}
+                >
+                  <TableCell className="font-semibold">{project.name}</TableCell>
+                  <TableCell className="font-mono text-xs">{project.code}</TableCell>
+                  <TableCell>{project.consultant_count}</TableCell>
+                  <TableCell>
+                    <Badge variant={project.is_active ? "secondary" : "outline"}>
+                      {project.is_active ? "Active" : "Deactivated"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant={project.is_active ? "destructive" : "secondary"}
+                      size="sm"
+                      disabled={isPending || !currentUser.isAdmin}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedProjectId(project.id);
+                        setErrorMessage(null);
+                        startTransition(async () => {
+                          const result = await setAdminProjectActiveAction({
+                            projectId: project.id,
+                            isActive: !project.is_active,
+                          });
+                          if (!result.ok) {
+                            setErrorMessage(result.error);
+                            return;
+                          }
+                          router.refresh();
+                        });
+                      }}
+                    >
+                      {project.is_active ? "Deactivate" : "Reactivate"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filteredProjects.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-muted-foreground">
+                    No projects found.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+
+      <Sheet
+        open={Boolean(selectedProject)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedProjectId(null);
+        }}
+      >
+        <SheetContent className="w-full overflow-y-auto px-6 sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Project Details</SheetTitle>
+            <SheetDescription>
+              Review project information and run admin actions.
+            </SheetDescription>
+          </SheetHeader>
+
+          {selectedProject ? (
+            <div className="mt-6 flex flex-col gap-5">
+              <div>
+                <p className="text-2xl font-semibold tracking-tight">
+                  {selectedProject.name}
+                </p>
+                <p className="font-mono text-xs text-muted-foreground">
+                  {selectedProject.code}
+                </p>
+              </div>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground">
+                    Assigned Consultants
+                  </p>
+                  <p className="mt-1 font-semibold">{selectedProject.consultant_count}</p>
+                  <div className="mt-3 space-y-2">
+                    {isLoadingConsultants ? (
+                      <p className="text-sm text-muted-foreground">Loading consultants...</p>
+                    ) : assignedConsultants.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No consultants assigned yet.
+                      </p>
+                    ) : (
+                      assignedConsultants.map((consultant) => (
+                        <div
+                          key={consultant.id}
+                          className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm"
+                        >
+                          <div>
+                            <p className="font-medium">{consultant.full_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {consultant.email}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={isPending || !currentUser.isAdmin}
+                            onClick={() => {
+                              setErrorMessage(null);
+                              startTransition(async () => {
+                                const result = await removeConsultantFromProjectAction({
+                                  projectId: selectedProject.id,
+                                  consultantId: consultant.id,
+                                });
+                                if (!result.ok) {
+                                  setErrorMessage(result.error);
+                                  return;
+                                }
+                                const consultantsResult =
+                                  await listProjectConsultantsAction(selectedProject.id);
+                                if (consultantsResult.ok) {
+                                  setAssignedConsultants(consultantsResult.consultants);
+                                }
+                                router.refresh();
+                              });
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <div className="mt-2">
+                    <Badge variant={selectedProject.is_active ? "secondary" : "outline"}>
+                      {selectedProject.is_active ? "Active" : "Deactivated"}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      Assign consultant
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={selectedConsultantId}
+                        onValueChange={setSelectedConsultantId}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select consultant" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {consultantOptions.map((consultant) => (
+                              <SelectItem key={consultant.id} value={consultant.id}>
+                                {consultant.full_name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={
+                          isPending || !currentUser.isAdmin || !selectedConsultantId
+                        }
+                        onClick={() => {
+                          setErrorMessage(null);
+                          startTransition(async () => {
+                            const result = await assignConsultantToProjectAction({
+                              projectId: selectedProject.id,
+                              consultantId: selectedConsultantId,
+                            });
+                            if (!result.ok) {
+                              setErrorMessage(result.error);
+                              return;
+                            }
+                            setSelectedConsultantId("");
+                            const consultantsResult =
+                              await listProjectConsultantsAction(selectedProject.id);
+                            if (consultantsResult.ok) {
+                              setAssignedConsultants(consultantsResult.consultants);
+                            }
+                            router.refresh();
+                          });
+                        }}
+                      >
+                        Assign
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    className="w-full"
+                    variant={selectedProject.is_active ? "destructive" : "secondary"}
+                    disabled={isPending || !currentUser.isAdmin}
+                    onClick={() => {
+                      setErrorMessage(null);
+                      startTransition(async () => {
+                        const result = await setAdminProjectActiveAction({
+                          projectId: selectedProject.id,
+                          isActive: !selectedProject.is_active,
+                        });
+                        if (!result.ok) {
+                          setErrorMessage(result.error);
+                          return;
+                        }
+                        router.refresh();
+                      });
+                    }}
+                  >
+                    {selectedProject.is_active
+                      ? "Deactivate Project"
+                      : "Reactivate Project"}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+    </Card>
+  );
+}

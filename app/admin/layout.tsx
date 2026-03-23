@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -18,7 +19,8 @@ export default function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
-  const adminName = "Alexander Wright";
+  const { fullName, role, isLoading, isAuthenticated } = useUser();
+  const adminName = fullName || "Admin User";
   const adminInitials = adminName
     .split(" ")
     .filter(Boolean)
@@ -48,9 +50,29 @@ export default function AdminLayout({
               <Avatar className="size-8">
                 <AvatarFallback>{adminInitials}</AvatarFallback>
               </Avatar>
-              <p className="text-sm font-semibold">{adminName}</p>
+              <p className="text-sm font-semibold">
+                {isLoading
+                  ? "Loading..."
+                  : isAuthenticated
+                    ? adminName
+                    : ""}
+              </p>
+              {!isLoading && !isAuthenticated ? (
+                <Link
+                  href="/auth/login"
+                  className="text-sm font-semibold underline underline-offset-4"
+                >
+                  Log in
+                </Link>
+              ) : null}
             </div>
-            <Badge variant="secondary">Admin</Badge>
+            <Badge variant="secondary">
+              {isAuthenticated
+                ? role
+                  ? role.charAt(0).toUpperCase() + role.slice(1)
+                  : "Unknown"
+                : "Guest"}
+            </Badge>
           </div>
         </div>
         <Separator />
