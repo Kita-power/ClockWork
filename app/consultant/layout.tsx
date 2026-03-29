@@ -8,6 +8,7 @@ export default function ConsultantLayout({
       roleTag="Consultant"
       userName="Leah Chen"
       subtitle="Create, update, and submit weekly timesheets."
+      overviewHref="/consultant"
     >
       {children}
     </RoleTopbarLayout>

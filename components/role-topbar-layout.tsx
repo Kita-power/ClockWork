@@ -11,6 +11,7 @@ type RoleTopbarLayoutProps = {
   roleTag: string;
   userName: string;
   subtitle: string;
+  overviewHref?: string;
   children: React.ReactNode;
 };
 
@@ -18,9 +19,12 @@ export function RoleTopbarLayout({
   roleTag,
   userName,
   subtitle,
+  overviewHref,
   children,
 }: RoleTopbarLayoutProps) {
   const pathname = usePathname();
+  const overviewPath = overviewHref ?? pathname;
+  const tabsValue = pathname.startsWith(overviewPath) ? overviewPath : pathname;
   const initials = userName
     .split(" ")
     .filter(Boolean)
@@ -35,10 +39,10 @@ export function RoleTopbarLayout({
           <div className="min-w-0">
             <h1 className="text-3xl font-semibold tracking-tight">Clockwork</h1>
             <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-            <Tabs value={pathname} className="mt-3">
+            <Tabs value={tabsValue} className="mt-3">
               <TabsList>
-                <TabsTrigger value={pathname} asChild>
-                  <Link href={pathname}>Overview</Link>
+                <TabsTrigger value={overviewPath} asChild>
+                  <Link href={overviewPath}>Overview</Link>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
