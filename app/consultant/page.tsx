@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -39,11 +40,30 @@ function formatDateTime(date: string): string {
   });
 }
 
-export default async function ConsultantPage() {
+function normalizeMonthValue(month?: string): string {
+  if (!month) return "";
+  return /^\d{4}-\d{2}$/.test(month) ? month : "";
+}
+
+type ConsultantPageProps = {
+  searchParams: Promise<{
+    month?: string;
+  }>;
+};
+
+export default async function ConsultantPage({
+  searchParams,
+}: ConsultantPageProps) {
   await connection();
 
   try {
+    const params = await searchParams;
     const timesheets = await consultantService.listTimesheets();
+    const selectedMonth = normalizeMonthValue(params.month);
+
+    const filteredTimesheets = selectedMonth
+      ? timesheets.filter((timesheet) => timesheet.weekStart.slice(0, 7) === selectedMonth)
+      : timesheets;
 
     return (
       <Card>
@@ -57,7 +77,30 @@ export default async function ConsultantPage() {
           <CreateTimesheetButton />
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="space-y-4">
+          <form className="flex flex-wrap items-end gap-2" method="get">
+            <div className="grid gap-1">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="month-filter">
+                Filter by month
+              </label>
+              <Input
+                id="month-filter"
+                name="month"
+                type="month"
+                defaultValue={selectedMonth}
+                className="w-[180px]"
+              />
+            </div>
+            <Button type="submit" variant="outline" size="sm">
+              Apply
+            </Button>
+            {selectedMonth ? (
+              <Button asChild type="button" variant="ghost" size="sm">
+                <Link href="/consultant">Clear</Link>
+              </Button>
+            ) : null}
+          </form>
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -69,32 +112,40 @@ export default async function ConsultantPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {timesheets.map((timesheet) => (
-                <TableRow key={timesheet.id}>
-                  <TableCell>
-                    {formatDate(timesheet.weekStart)} to {formatDate(timesheet.weekEnd)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={timesheet.status === "submitted" ? "secondary" : "outline"}>
-                      {timesheet.status === "submitted" ? "Submitted" : "Draft"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{timesheet.totalHours.toFixed(2)}</TableCell>
-                  <TableCell>{formatDateTime(timesheet.updatedAt)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={`/consultant/timesheets/${timesheet.id}`}>
-                          {timesheet.status === "submitted" ? "View" : "Continue"}
-                        </Link>
-                      </Button>
-                      {timesheet.status === "draft" ? (
-                        <DeleteDraftButton timesheetId={timesheet.id} />
-                      ) : null}
-                    </div>
+              {filteredTimesheets.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
+                    No timesheets found for this month.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredTimesheets.map((timesheet) => (
+                  <TableRow key={timesheet.id}>
+                    <TableCell>
+                      {formatDate(timesheet.weekStart)} to {formatDate(timesheet.weekEnd)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={timesheet.status === "submitted" ? "secondary" : "outline"}>
+                        {timesheet.status === "submitted" ? "Submitted" : "Draft"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{timesheet.totalHours.toFixed(2)}</TableCell>
+                    <TableCell>{formatDateTime(timesheet.updatedAt)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/consultant/timesheets/${timesheet.id}`}>
+                            {timesheet.status === "submitted" ? "View" : "Continue"}
+                          </Link>
+                        </Button>
+                        {timesheet.status === "draft" ? (
+                          <DeleteDraftButton timesheetId={timesheet.id} />
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
