@@ -1,3 +1,8 @@
+import "server-only";
+
+import { promises as fs } from "node:fs";
+import { join } from "node:path";
+
 export type TimesheetStatus = "draft" | "submitted";
 
 export type WeeklyTimesheetEntry = {
@@ -34,10 +39,22 @@ type StoredWeeklyTimesheetRecord = WeeklyTimesheetRecord & {
   updatedAt: string;
 };
 
-let timesheetStore: StoredWeeklyTimesheetRecord[] | null = null;
+const MOCK_DATA_DIRECTORY = join(process.cwd(), ".mock-data");
+const MOCK_TIMESHEET_STORE_PATH = join(
+  MOCK_DATA_DIRECTORY,
+  "consultant-timesheets.json",
+);
 
 function toIsoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseIsoDate(input: string): Date {
+  const [year, month, day] = input.split("-").map((value) => Number.parseInt(value, 10));
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
 }
 
 function addDays(date: Date, days: number): Date {
@@ -52,7 +69,7 @@ function buildTimesheetId(weekStart: string): string {
 
 function resolveWeekStart(inputWeekStart?: string): Date {
   if (inputWeekStart) {
-    return new Date(`${inputWeekStart}T00:00:00`);
+    return parseIsoDate(inputWeekStart);
   }
 
   const today = new Date();
@@ -175,21 +192,56 @@ function seedTimesheetStore(): StoredWeeklyTimesheetRecord[] {
   return [currentWeek, previousWeek, twoWeeksAgo];
 }
 
-function getTimesheetStore(): StoredWeeklyTimesheetRecord[] {
-  if (timesheetStore === null) {
-    timesheetStore = seedTimesheetStore();
+async function ensureMockTimesheetStoreFile(): Promise<void> {
+  try {
+    await fs.access(MOCK_TIMESHEET_STORE_PATH);
+  } catch {
+    await fs.mkdir(MOCK_DATA_DIRECTORY, { recursive: true });
+    await fs.writeFile(
+      MOCK_TIMESHEET_STORE_PATH,
+      JSON.stringify(seedTimesheetStore(), null, 2),
+      "utf8",
+    );
   }
-  return timesheetStore;
 }
 
-function upsertTimesheet(record: StoredWeeklyTimesheetRecord): void {
-  const store = getTimesheetStore();
-  const index = store.findIndex((item) => item.weekStart === record.weekStart);
+async function readTimesheetStore(): Promise<StoredWeeklyTimesheetRecord[]> {
+  await ensureMockTimesheetStoreFile();
+  const content = await fs.readFile(MOCK_TIMESHEET_STORE_PATH, "utf8");
+
+  try {
+    const parsed = JSON.parse(content);
+    if (!Array.isArray(parsed)) {
+      return seedTimesheetStore();
+    }
+
+    return parsed as StoredWeeklyTimesheetRecord[];
+  } catch {
+    return seedTimesheetStore();
+  }
+}
+
+async function writeTimesheetStore(
+  records: StoredWeeklyTimesheetRecord[],
+): Promise<void> {
+  await ensureMockTimesheetStoreFile();
+  await fs.writeFile(
+    MOCK_TIMESHEET_STORE_PATH,
+    JSON.stringify(records, null, 2),
+    "utf8",
+  );
+}
+
+function upsertTimesheet(
+  records: StoredWeeklyTimesheetRecord[],
+  record: StoredWeeklyTimesheetRecord,
+): void {
+  const index = records.findIndex((item) => item.weekStart === record.weekStart);
   if (index >= 0) {
-    store[index] = record;
+    records[index] = record;
     return;
   }
-  store.push(record);
+  records.push(record);
 }
 
 function validateTimesheetEntries(entries: WeeklyTimesheetEntry[]): void {
@@ -225,14 +277,18 @@ export const consultantService = {
     "Handles consultant workflows such as draft, submit, and resubmit timesheets.",
 
   async listTimesheets(): Promise<TimesheetSummaryRecord[]> {
-    return getTimesheetStore()
+    const records = await readTimesheetStore();
+
+    return records
       .map(toSummary)
       .sort((a, b) => b.weekStart.localeCompare(a.weekStart));
   },
 
   async createNewWeeklyTimesheet(): Promise<WeeklyTimesheetRecord> {
+    const records = await readTimesheetStore();
+
     const existingWeekStarts = new Set(
-      getTimesheetStore().map((record) => record.weekStart),
+      records.map((record) => record.weekStart),
     );
 
     let candidateWeekStartDate = resolveWeekStart();
@@ -243,15 +299,18 @@ export const consultantService = {
     const created = buildStoredTimesheet(toIsoDate(candidateWeekStartDate), {
       status: "draft",
     });
-    upsertTimesheet(created);
+    upsertTimesheet(records, created);
+    await writeTimesheetStore(records);
+
     return toWeeklyRecord(created);
   },
 
   async getWeeklyTimesheet(weekStart?: string): Promise<WeeklyTimesheetRecord> {
+    const records = await readTimesheetStore();
     const startDate = resolveWeekStart(weekStart);
     const normalizedWeekStart = toIsoDate(startDate);
 
-    const existingRecord = getTimesheetStore().find(
+    const existingRecord = records.find(
       (record) => record.weekStart === normalizedWeekStart,
     );
 
@@ -267,7 +326,8 @@ export const consultantService = {
   },
 
   async getWeeklyTimesheetById(timesheetId: string): Promise<WeeklyTimesheetRecord> {
-    const record = getTimesheetStore().find((item) => item.id === timesheetId);
+    const records = await readTimesheetStore();
+    const record = records.find((item) => item.id === timesheetId);
     if (!record) {
       throw new Error("Timesheet not found");
     }
@@ -277,6 +337,7 @@ export const consultantService = {
 
   async saveWeeklyTimesheetDraft(input: SaveTimesheetInput): Promise<{ savedAt: string }> {
     validateTimesheetEntries(input.entries);
+    const records = await readTimesheetStore();
 
     const savedAt = new Date().toISOString();
     const savedRecord = buildStoredTimesheet(input.weekStart, {
@@ -285,12 +346,15 @@ export const consultantService = {
       updatedAt: savedAt,
     });
 
-    upsertTimesheet(savedRecord);
+    upsertTimesheet(records, savedRecord);
+    await writeTimesheetStore(records);
+
     return { savedAt };
   },
 
   async submitWeeklyTimesheet(input: SaveTimesheetInput): Promise<{ submittedAt: string }> {
     validateTimesheetEntries(input.entries);
+    const records = await readTimesheetStore();
 
     const submittedAt = new Date().toISOString();
     const submittedRecord = buildStoredTimesheet(input.weekStart, {
@@ -299,7 +363,9 @@ export const consultantService = {
       updatedAt: submittedAt,
     });
 
-    upsertTimesheet(submittedRecord);
+    upsertTimesheet(records, submittedRecord);
+    await writeTimesheetStore(records);
+
     return { submittedAt };
   },
 };

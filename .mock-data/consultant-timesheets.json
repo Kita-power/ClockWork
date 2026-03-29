@@ -1,0 +1,408 @@
+[
+  {
+    "id": "ts-2026-03-23",
+    "weekStart": "2026-03-23",
+    "weekEnd": "2026-03-29",
+    "status": "submitted",
+    "entries": [
+      {
+        "date": "2026-03-23",
+        "dayLabel": "Mon",
+        "projectCode": "PROJ-001",
+        "hours": 8,
+        "notes": "Planning"
+      },
+      {
+        "date": "2026-03-24",
+        "dayLabel": "Tue",
+        "projectCode": "PROJ-001",
+        "hours": 7.5,
+        "notes": "Delivery"
+      },
+      {
+        "date": "2026-03-25",
+        "dayLabel": "Wed",
+        "projectCode": "PROJ-002",
+        "hours": 8,
+        "notes": "Client workshop"
+      },
+      {
+        "date": "2026-03-26",
+        "dayLabel": "Thu",
+        "projectCode": "PROJ-001",
+        "hours": 8,
+        "notes": "Implementation"
+      },
+      {
+        "date": "2026-03-27",
+        "dayLabel": "Fri",
+        "projectCode": "PROJ-000",
+        "hours": 0.5,
+        "notes": ""
+      },
+      {
+        "date": "2026-03-28",
+        "dayLabel": "Sat",
+        "projectCode": "pwdwa",
+        "hours": 1.25,
+        "notes": ""
+      },
+      {
+        "date": "2026-03-29",
+        "dayLabel": "Sun",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      }
+    ],
+    "updatedAt": "2026-03-29T22:36:13.826Z"
+  },
+  {
+    "id": "ts-2026-03-16",
+    "weekStart": "2026-03-16",
+    "weekEnd": "2026-03-22",
+    "status": "submitted",
+    "entries": [
+      {
+        "date": "2026-03-16",
+        "dayLabel": "Mon",
+        "projectCode": "PROJ-003",
+        "hours": 8,
+        "notes": "Project execution"
+      },
+      {
+        "date": "2026-03-17",
+        "dayLabel": "Tue",
+        "projectCode": "PROJ-003",
+        "hours": 8,
+        "notes": "Project execution"
+      },
+      {
+        "date": "2026-03-18",
+        "dayLabel": "Wed",
+        "projectCode": "PROJ-003",
+        "hours": 8,
+        "notes": "Project execution"
+      },
+      {
+        "date": "2026-03-19",
+        "dayLabel": "Thu",
+        "projectCode": "PROJ-003",
+        "hours": 8,
+        "notes": "Project execution"
+      },
+      {
+        "date": "2026-03-20",
+        "dayLabel": "Fri",
+        "projectCode": "PROJ-003",
+        "hours": 8,
+        "notes": "Project execution"
+      },
+      {
+        "date": "2026-03-21",
+        "dayLabel": "Sat",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-03-22",
+        "dayLabel": "Sun",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      }
+    ],
+    "updatedAt": "2026-03-25T23:35:27.417Z"
+  },
+  {
+    "id": "ts-2026-03-09",
+    "weekStart": "2026-03-09",
+    "weekEnd": "2026-03-15",
+    "status": "submitted",
+    "entries": [
+      {
+        "date": "2026-03-09",
+        "dayLabel": "Mon",
+        "projectCode": "PROJ-004",
+        "hours": 8,
+        "notes": "Discovery"
+      },
+      {
+        "date": "2026-03-10",
+        "dayLabel": "Tue",
+        "projectCode": "PROJ-004",
+        "hours": 7.75,
+        "notes": "Scoping"
+      },
+      {
+        "date": "2026-03-11",
+        "dayLabel": "Wed",
+        "projectCode": "PROJ-004",
+        "hours": 8,
+        "notes": "Workshop"
+      },
+      {
+        "date": "2026-03-12",
+        "dayLabel": "Thu",
+        "projectCode": "PROJ-004",
+        "hours": 7,
+        "notes": "Implementation"
+      },
+      {
+        "date": "2026-03-13",
+        "dayLabel": "Fri",
+        "projectCode": "PROJ-004",
+        "hours": 8,
+        "notes": "QA"
+      },
+      {
+        "date": "2026-03-14",
+        "dayLabel": "Sat",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-03-15",
+        "dayLabel": "Sun",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      }
+    ],
+    "updatedAt": "2026-03-18T23:35:27.418Z"
+  },
+  {
+    "id": "ts-2026-03-30",
+    "weekStart": "2026-03-30",
+    "weekEnd": "2026-04-05",
+    "status": "draft",
+    "entries": [
+      {
+        "date": "2026-03-30",
+        "dayLabel": "Mon",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-03-31",
+        "dayLabel": "Tue",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-01",
+        "dayLabel": "Wed",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-02",
+        "dayLabel": "Thu",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-03",
+        "dayLabel": "Fri",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-04",
+        "dayLabel": "Sat",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-05",
+        "dayLabel": "Sun",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      }
+    ],
+    "updatedAt": "2026-03-29T22:36:31.298Z"
+  },
+  {
+    "id": "ts-2026-04-06",
+    "weekStart": "2026-04-06",
+    "weekEnd": "2026-04-12",
+    "status": "draft",
+    "entries": [
+      {
+        "date": "2026-04-06",
+        "dayLabel": "Mon",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-07",
+        "dayLabel": "Tue",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-08",
+        "dayLabel": "Wed",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-09",
+        "dayLabel": "Thu",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-10",
+        "dayLabel": "Fri",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-11",
+        "dayLabel": "Sat",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-12",
+        "dayLabel": "Sun",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      }
+    ],
+    "updatedAt": "2026-03-29T22:36:27.614Z"
+  },
+  {
+    "id": "ts-2026-04-13",
+    "weekStart": "2026-04-13",
+    "weekEnd": "2026-04-19",
+    "status": "draft",
+    "entries": [
+      {
+        "date": "2026-04-13",
+        "dayLabel": "Mon",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-14",
+        "dayLabel": "Tue",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-15",
+        "dayLabel": "Wed",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-16",
+        "dayLabel": "Thu",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-17",
+        "dayLabel": "Fri",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-18",
+        "dayLabel": "Sat",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-19",
+        "dayLabel": "Sun",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      }
+    ],
+    "updatedAt": "2026-03-29T22:36:31.354Z"
+  },
+  {
+    "id": "ts-2026-04-20",
+    "weekStart": "2026-04-20",
+    "weekEnd": "2026-04-26",
+    "status": "draft",
+    "entries": [
+      {
+        "date": "2026-04-20",
+        "dayLabel": "Mon",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-21",
+        "dayLabel": "Tue",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-22",
+        "dayLabel": "Wed",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-23",
+        "dayLabel": "Thu",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-24",
+        "dayLabel": "Fri",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-25",
+        "dayLabel": "Sat",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-26",
+        "dayLabel": "Sun",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      }
+    ],
+    "updatedAt": "2026-03-29T22:36:31.483Z"
+  }
+]

@@ -42,7 +42,9 @@ export function RoleTopbarLayout({
             <Tabs value={tabsValue} className="mt-3">
               <TabsList>
                 <TabsTrigger value={overviewPath} asChild>
-                  <Link href={overviewPath}>Overview</Link>
+                  <Link href={overviewPath} prefetch={false}>
+                    Overview
+                  </Link>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
