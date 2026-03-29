@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +46,7 @@ export function ConsultantTimesheetClient({
   initialTimesheet,
   initialError,
 }: ConsultantTimesheetClientProps) {
+  const router = useRouter();
   const [timesheet, setTimesheet] = useState(initialTimesheet);
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -111,6 +113,7 @@ export function ConsultantTimesheetClient({
         }
 
         setSuccessMessage(result.message);
+        router.refresh();
       });
     });
   }
@@ -131,6 +134,7 @@ export function ConsultantTimesheetClient({
 
         setTimesheet((prev) => ({ ...prev, status: "submitted" }));
         setSuccessMessage(result.message);
+        router.refresh();
       });
     });
   }

@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { consultantService } from "@/services";
 import { ConsultantTimesheetClient } from "../consultant-timesheet-client";
 
@@ -10,9 +11,13 @@ type ConsultantNewTimesheetPageProps = {
 export default async function ConsultantNewTimesheetPage({
   searchParams,
 }: ConsultantNewTimesheetPageProps) {
+  await connection();
+
   try {
     const params = await searchParams;
-    const timesheet = await consultantService.getWeeklyTimesheet(params.weekStart);
+    const timesheet = params.weekStart
+      ? await consultantService.getWeeklyTimesheet(params.weekStart)
+      : await consultantService.createNewWeeklyTimesheet();
 
     return (
       <ConsultantTimesheetClient

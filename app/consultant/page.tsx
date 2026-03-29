@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,8 @@ function formatDateTime(date: string): string {
 }
 
 export default async function ConsultantPage() {
+  await connection();
+
   try {
     const timesheets = await consultantService.listTimesheets();
 
