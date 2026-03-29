@@ -192,6 +192,34 @@ function upsertTimesheet(record: StoredWeeklyTimesheetRecord): void {
   store.push(record);
 }
 
+function validateTimesheetEntries(entries: WeeklyTimesheetEntry[]): void {
+  const invalidRow = entries.find((entry) => {
+    const hasProjectCode = entry.projectCode.trim().length > 0;
+    const hasHours = entry.hours > 0;
+    const hasPairError = (hasProjectCode && !hasHours) || (!hasProjectCode && hasHours);
+    const hasInvalidHours = entry.hours < 0 || entry.hours > 24;
+
+    return hasPairError || hasInvalidHours;
+  });
+
+  if (!invalidRow) return;
+
+  const hasProjectCode = invalidRow.projectCode.trim().length > 0;
+  const hasHours = invalidRow.hours > 0;
+
+  if (invalidRow.hours < 0 || invalidRow.hours > 24) {
+    throw new Error("Hours must be between 0 and 24.");
+  }
+
+  if (hasProjectCode && !hasHours) {
+    throw new Error("Hours are required when project code is entered.");
+  }
+
+  if (!hasProjectCode && hasHours) {
+    throw new Error("Project code is required when hours are entered.");
+  }
+}
+
 export const consultantService = {
   description:
     "Handles consultant workflows such as draft, submit, and resubmit timesheets.",
@@ -248,6 +276,8 @@ export const consultantService = {
   },
 
   async saveWeeklyTimesheetDraft(input: SaveTimesheetInput): Promise<{ savedAt: string }> {
+    validateTimesheetEntries(input.entries);
+
     const savedAt = new Date().toISOString();
     const savedRecord = buildStoredTimesheet(input.weekStart, {
       status: "draft",
@@ -260,6 +290,8 @@ export const consultantService = {
   },
 
   async submitWeeklyTimesheet(input: SaveTimesheetInput): Promise<{ submittedAt: string }> {
+    validateTimesheetEntries(input.entries);
+
     const submittedAt = new Date().toISOString();
     const submittedRecord = buildStoredTimesheet(input.weekStart, {
       status: "submitted",

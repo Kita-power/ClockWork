@@ -68,6 +68,33 @@ export function ConsultantTimesheetClient({
     [timesheet.entries],
   );
 
+  const rowValidationErrors = useMemo(() => {
+    return timesheet.entries
+      .map((entry, index) => {
+        const hasProjectCode = entry.projectCode.trim().length > 0;
+        const hasHours = entry.hours > 0;
+
+        if (hasProjectCode && !hasHours) {
+          return {
+            index,
+            message: "Hours are required when a project code is entered.",
+          };
+        }
+
+        if (!hasProjectCode && hasHours) {
+          return {
+            index,
+            message: "Project code is required when hours are entered.",
+          };
+        }
+
+        return null;
+      })
+      .filter((item): item is { index: number; message: string } => item !== null);
+  }, [timesheet.entries]);
+
+  const hasPairValidationErrors = rowValidationErrors.length > 0;
+
   function updateEntry(
     index: number,
     patch: Partial<WeeklyTimesheetEntry>,
@@ -188,6 +215,11 @@ export function ConsultantTimesheetClient({
                   </TableCell>
                   <TableCell>
                     <Input
+                      className={
+                        entry.projectCode.trim().length === 0 && entry.hours > 0
+                          ? "border-destructive"
+                          : undefined
+                      }
                       value={entry.projectCode}
                       onChange={(event) =>
                         updateEntry(index, { projectCode: event.target.value })
@@ -198,6 +230,11 @@ export function ConsultantTimesheetClient({
                   </TableCell>
                   <TableCell>
                     <Input
+                      className={
+                        entry.projectCode.trim().length > 0 && entry.hours <= 0
+                          ? "border-destructive"
+                          : undefined
+                      }
                       type="number"
                       min={0}
                       max={24}
@@ -240,6 +277,13 @@ export function ConsultantTimesheetClient({
             </p>
           ) : null}
 
+          {hasPairValidationErrors ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Each row must include both project code and hours together. Fix row(s):{" "}
+              {rowValidationErrors.map((item) => item.index + 1).join(", ")}.
+            </p>
+          ) : null}
+
           {successMessage ? (
             <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600">
               {successMessage}
@@ -250,13 +294,19 @@ export function ConsultantTimesheetClient({
             <Button
               variant="outline"
               onClick={saveDraft}
-              disabled={isPending || isSubmitted || hasInvalidHours}
+              disabled={isPending || isSubmitted || hasInvalidHours || hasPairValidationErrors}
             >
               Save Draft
             </Button>
             <Button
               onClick={submitTimesheet}
-              disabled={isPending || isSubmitted || hasInvalidHours || totalHours <= 0}
+              disabled={
+                isPending ||
+                isSubmitted ||
+                hasInvalidHours ||
+                hasPairValidationErrors ||
+                totalHours <= 0
+              }
             >
               Submit Timesheet
             </Button>
