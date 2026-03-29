@@ -4,7 +4,10 @@ import { ConsultantTimesheetClient } from "../consultant-timesheet-client";
 
 type ConsultantNewTimesheetPageProps = {
   searchParams: Promise<{
+    create?: string;
+    timesheetId?: string;
     weekStart?: string;
+    t?: string;
   }>;
 };
 
@@ -15,9 +18,15 @@ export default async function ConsultantNewTimesheetPage({
 
   try {
     const params = await searchParams;
-    const timesheet = params.weekStart
-      ? await consultantService.getWeeklyTimesheet(params.weekStart)
-      : await consultantService.createNewWeeklyTimesheet();
+    const shouldCreate = params.create === "1";
+
+    const timesheet = shouldCreate
+      ? await consultantService.createNewWeeklyTimesheet()
+      : params.timesheetId
+        ? await consultantService.getWeeklyTimesheetById(params.timesheetId)
+      : params.weekStart
+        ? await consultantService.getWeeklyTimesheet(params.weekStart)
+        : await consultantService.createNewWeeklyTimesheet();
 
     return (
       <ConsultantTimesheetClient

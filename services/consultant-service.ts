@@ -238,6 +238,15 @@ export const consultantService = {
     return toWeeklyRecord(fallback);
   },
 
+  async getWeeklyTimesheetById(timesheetId: string): Promise<WeeklyTimesheetRecord> {
+    const record = getTimesheetStore().find((item) => item.id === timesheetId);
+    if (!record) {
+      throw new Error("Timesheet not found");
+    }
+
+    return toWeeklyRecord(record);
+  },
+
   async saveWeeklyTimesheetDraft(input: SaveTimesheetInput): Promise<{ savedAt: string }> {
     const savedAt = new Date().toISOString();
     const savedRecord = buildStoredTimesheet(input.weekStart, {

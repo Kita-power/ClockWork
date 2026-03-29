@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { consultantService } from "@/services";
+import { CreateTimesheetButton } from "./create-timesheet-button";
 
 function formatDate(date: string): string {
   return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
@@ -52,9 +53,7 @@ export default async function ConsultantPage() {
               Review previous submissions and continue drafts before creating a new weekly timesheet.
             </CardDescription>
           </div>
-          <Button asChild>
-            <Link href="/consultant/new">Create Timesheet</Link>
-          </Button>
+          <CreateTimesheetButton />
         </CardHeader>
 
         <CardContent>
@@ -83,7 +82,7 @@ export default async function ConsultantPage() {
                   <TableCell>{formatDateTime(timesheet.updatedAt)}</TableCell>
                   <TableCell className="text-right">
                     <Button asChild size="sm" variant="outline">
-                      <Link href={`/consultant/new?weekStart=${timesheet.weekStart}`}>
+                      <Link href={`/consultant/timesheets/${timesheet.id}`}>
                         {timesheet.status === "submitted" ? "View" : "Continue"}
                       </Link>
                     </Button>
