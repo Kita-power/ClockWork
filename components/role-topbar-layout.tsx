@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { LogoutButton } from "@/components/logout-button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -58,6 +59,7 @@ export function RoleTopbarLayout({
               <p className="text-sm font-semibold">{userName}</p>
             </div>
             <Badge variant="secondary">{roleTag}</Badge>
+            <LogoutButton redirectTo="/" label="Sign out" />
           </div>
         </div>
         <Separator />

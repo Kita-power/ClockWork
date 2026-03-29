@@ -172,5 +172,63 @@
       }
     ],
     "updatedAt": "2026-03-18T23:35:27.418Z"
+  },
+  {
+    "id": "ts-2026-03-30",
+    "weekStart": "2026-03-30",
+    "weekEnd": "2026-04-05",
+    "status": "draft",
+    "entries": [
+      {
+        "date": "2026-03-30",
+        "dayLabel": "Mon",
+        "projectCode": "PROJ-001",
+        "hours": 2,
+        "notes": ""
+      },
+      {
+        "date": "2026-03-31",
+        "dayLabel": "Tue",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-01",
+        "dayLabel": "Wed",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-02",
+        "dayLabel": "Thu",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-03",
+        "dayLabel": "Fri",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-04",
+        "dayLabel": "Sat",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      },
+      {
+        "date": "2026-04-05",
+        "dayLabel": "Sun",
+        "projectCode": "",
+        "hours": 0,
+        "notes": ""
+      }
+    ],
+    "updatedAt": "2026-03-29T23:17:11.960Z"
   }
 ]
