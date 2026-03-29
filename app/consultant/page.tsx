@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { consultantService } from "@/services";
 import { CreateTimesheetButton } from "./create-timesheet-button";
+import { DeleteDraftButton } from "./delete-draft-button";
 
 function formatDate(date: string): string {
   return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
@@ -81,11 +82,16 @@ export default async function ConsultantPage() {
                   <TableCell>{timesheet.totalHours.toFixed(2)}</TableCell>
                   <TableCell>{formatDateTime(timesheet.updatedAt)}</TableCell>
                   <TableCell className="text-right">
-                    <Button asChild size="sm" variant="outline">
-                      <Link href={`/consultant/timesheets/${timesheet.id}`}>
-                        {timesheet.status === "submitted" ? "View" : "Continue"}
-                      </Link>
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/consultant/timesheets/${timesheet.id}`}>
+                          {timesheet.status === "submitted" ? "View" : "Continue"}
+                        </Link>
+                      </Button>
+                      {timesheet.status === "draft" ? (
+                        <DeleteDraftButton timesheetId={timesheet.id} />
+                      ) : null}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

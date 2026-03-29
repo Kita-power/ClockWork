@@ -368,4 +368,20 @@ export const consultantService = {
 
     return { submittedAt };
   },
+
+  async deleteDraftTimesheet(timesheetId: string): Promise<void> {
+    const records = await readTimesheetStore();
+    const index = records.findIndex((record) => record.id === timesheetId);
+
+    if (index < 0) {
+      throw new Error("Timesheet not found");
+    }
+
+    if (records[index].status !== "draft") {
+      throw new Error("Only draft timesheets can be deleted.");
+    }
+
+    records.splice(index, 1);
+    await writeTimesheetStore(records);
+  },
 };

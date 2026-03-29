@@ -54,3 +54,15 @@ export async function submitConsultantTimesheetAction(
     return { ok: false, error: getErrorMessage(error) };
   }
 }
+
+export async function deleteConsultantDraftTimesheetAction(
+  timesheetId: string,
+): Promise<ActionResult> {
+  try {
+    await consultantService.deleteDraftTimesheet(timesheetId);
+    revalidatePath("/consultant");
+    return { ok: true, message: "Draft timesheet deleted" };
+  } catch (error) {
+    return { ok: false, error: getErrorMessage(error) };
+  }
+}
