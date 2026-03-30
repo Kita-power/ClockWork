@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { notFound } from "next/navigation";
 import { consultantService } from "@/services";
 import { ConsultantTimesheetClient } from "../../consultant-timesheet-client";
 
@@ -29,12 +30,11 @@ export default async function ConsultantTimesheetDetailPage({
     const message =
       error instanceof Error ? error.message : "Unable to load timesheet";
 
-    const fallback = await consultantService.createNewWeeklyTimesheet();
-    return (
-      <ConsultantTimesheetClient
-        initialTimesheet={fallback}
-        initialError={message}
-      />
-    );
+    if (message === "Timesheet not found") {
+      notFound();
+    }
+
+    const fallback = await consultantService.getWeeklyTimesheet();
+    return <ConsultantTimesheetClient initialTimesheet={fallback} initialError={message} />;
   }
 }

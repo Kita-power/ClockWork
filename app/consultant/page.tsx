@@ -104,6 +104,7 @@ export default async function ConsultantPage({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Timesheet ID</TableHead>
                 <TableHead>Week</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Total Hours</TableHead>
@@ -114,13 +115,14 @@ export default async function ConsultantPage({
             <TableBody>
               {filteredTimesheets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
                     No timesheets found for this month.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredTimesheets.map((timesheet) => (
                   <TableRow key={timesheet.id}>
+                    <TableCell className="font-mono text-xs">{timesheet.id}</TableCell>
                     <TableCell>
                       {formatDate(timesheet.weekStart)} to {formatDate(timesheet.weekEnd)}
                     </TableCell>

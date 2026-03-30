@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 
@@ -14,6 +15,7 @@ export type WeeklyTimesheetEntry = {
 };
 
 export type WeeklyTimesheetRecord = {
+  id: string;
   weekStart: string;
   weekEnd: string;
   status: TimesheetStatus;
@@ -30,6 +32,7 @@ export type TimesheetSummaryRecord = {
 };
 
 export type SaveTimesheetInput = {
+  id?: string;
   weekStart: string;
   entries: WeeklyTimesheetEntry[];
 };
@@ -63,8 +66,8 @@ function addDays(date: Date, days: number): Date {
   return nextDate;
 }
 
-function buildTimesheetId(weekStart: string): string {
-  return `ts-${weekStart}`;
+function buildTimesheetId(): string {
+  return `ts-${randomUUID()}`;
 }
 
 function resolveWeekStart(inputWeekStart?: string): Date {
@@ -107,6 +110,7 @@ function cloneEntries(entries: WeeklyTimesheetEntry[]): WeeklyTimesheetEntry[] {
 function buildStoredTimesheet(
   weekStart: string,
   input?: {
+    id?: string;
     status?: TimesheetStatus;
     entries?: WeeklyTimesheetEntry[];
     updatedAt?: string;
@@ -117,7 +121,7 @@ function buildStoredTimesheet(
   const endDate = addDays(startDate, 6);
 
   return {
-    id: buildTimesheetId(normalizedWeekStart),
+    id: input?.id ?? buildTimesheetId(),
     weekStart: normalizedWeekStart,
     weekEnd: toIsoDate(endDate),
     status: input?.status ?? "draft",
@@ -144,11 +148,34 @@ function toSummary(record: StoredWeeklyTimesheetRecord): TimesheetSummaryRecord 
 
 function toWeeklyRecord(record: StoredWeeklyTimesheetRecord): WeeklyTimesheetRecord {
   return {
+    id: record.id,
     weekStart: record.weekStart,
     weekEnd: record.weekEnd,
     status: record.status,
     entries: cloneEntries(record.entries),
   };
+}
+
+function normalizeStoredRecords(
+  records: StoredWeeklyTimesheetRecord[],
+): StoredWeeklyTimesheetRecord[] {
+  const seenIds = new Set<string>();
+
+  return records.map((record) => {
+    const normalizedId =
+      typeof record.id === "string" &&
+      record.id.trim().length > 0 &&
+      !seenIds.has(record.id)
+        ? record.id
+        : buildTimesheetId();
+
+    seenIds.add(normalizedId);
+
+    return {
+      ...record,
+      id: normalizedId,
+    };
+  });
 }
 
 function seedTimesheetStore(): StoredWeeklyTimesheetRecord[] {
@@ -215,7 +242,14 @@ async function readTimesheetStore(): Promise<StoredWeeklyTimesheetRecord[]> {
       return seedTimesheetStore();
     }
 
-    return parsed as StoredWeeklyTimesheetRecord[];
+    const normalized = normalizeStoredRecords(parsed as StoredWeeklyTimesheetRecord[]);
+    const shouldRewriteStore = normalized.some((record, index) => record.id !== parsed[index]?.id);
+
+    if (shouldRewriteStore) {
+      await writeTimesheetStore(normalized);
+    }
+
+    return normalized;
   } catch {
     return seedTimesheetStore();
   }
@@ -338,9 +372,19 @@ export const consultantService = {
   async saveWeeklyTimesheetDraft(input: SaveTimesheetInput): Promise<{ savedAt: string }> {
     validateTimesheetEntries(input.entries);
     const records = await readTimesheetStore();
+    const startDate = resolveWeekStart(input.weekStart);
+    const normalizedWeekStart = toIsoDate(startDate);
+    const existingRecord = input.id
+      ? records.find((record) => record.id === input.id)
+      : records.find((record) => record.weekStart === normalizedWeekStart);
+
+    if (input.id && !existingRecord) {
+      throw new Error("Timesheet not found");
+    }
 
     const savedAt = new Date().toISOString();
-    const savedRecord = buildStoredTimesheet(input.weekStart, {
+    const savedRecord = buildStoredTimesheet(normalizedWeekStart, {
+      id: existingRecord?.id,
       status: "draft",
       entries: input.entries,
       updatedAt: savedAt,
@@ -355,9 +399,19 @@ export const consultantService = {
   async submitWeeklyTimesheet(input: SaveTimesheetInput): Promise<{ submittedAt: string }> {
     validateTimesheetEntries(input.entries);
     const records = await readTimesheetStore();
+    const startDate = resolveWeekStart(input.weekStart);
+    const normalizedWeekStart = toIsoDate(startDate);
+    const existingRecord = input.id
+      ? records.find((record) => record.id === input.id)
+      : records.find((record) => record.weekStart === normalizedWeekStart);
+
+    if (input.id && !existingRecord) {
+      throw new Error("Timesheet not found");
+    }
 
     const submittedAt = new Date().toISOString();
-    const submittedRecord = buildStoredTimesheet(input.weekStart, {
+    const submittedRecord = buildStoredTimesheet(normalizedWeekStart, {
+      id: existingRecord?.id,
       status: "submitted",
       entries: input.entries,
       updatedAt: submittedAt,

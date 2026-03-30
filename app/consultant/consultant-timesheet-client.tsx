@@ -121,6 +121,7 @@ export function ConsultantTimesheetClient({
         }
 
         setTimesheet(result.timesheet);
+        router.replace(`/consultant/timesheets/${result.timesheet.id}`);
       });
     });
   }
@@ -131,6 +132,7 @@ export function ConsultantTimesheetClient({
 
     startTransition(() => {
       saveConsultantTimesheetDraftAction({
+        id: timesheet.id,
         weekStart: timesheet.weekStart,
         entries: timesheet.entries,
       }).then((result) => {
@@ -140,6 +142,7 @@ export function ConsultantTimesheetClient({
         }
 
         setSuccessMessage(result.message);
+        router.replace(`/consultant/timesheets/${timesheet.id}`);
         router.refresh();
       });
     });
@@ -151,6 +154,7 @@ export function ConsultantTimesheetClient({
 
     startTransition(() => {
       submitConsultantTimesheetAction({
+        id: timesheet.id,
         weekStart: timesheet.weekStart,
         entries: timesheet.entries,
       }).then((result) => {
@@ -161,6 +165,7 @@ export function ConsultantTimesheetClient({
 
         setTimesheet((prev) => ({ ...prev, status: "submitted" }));
         setSuccessMessage(result.message);
+        router.replace(`/consultant/timesheets/${timesheet.id}`);
         router.refresh();
       });
     });

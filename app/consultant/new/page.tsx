@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { redirect } from "next/navigation";
 import { consultantService } from "@/services";
 import { ConsultantTimesheetClient } from "../consultant-timesheet-client";
 
@@ -15,18 +16,20 @@ export default async function ConsultantNewTimesheetPage({
   searchParams,
 }: ConsultantNewTimesheetPageProps) {
   await connection();
+  const params = await searchParams;
+  const shouldCreate = params.create === "1";
+
+  if (shouldCreate) {
+    const created = await consultantService.createNewWeeklyTimesheet();
+    redirect(`/consultant/timesheets/${created.id}`);
+  }
 
   try {
-    const params = await searchParams;
-    const shouldCreate = params.create === "1";
-
-    const timesheet = shouldCreate
-      ? await consultantService.createNewWeeklyTimesheet()
-      : params.timesheetId
-        ? await consultantService.getWeeklyTimesheetById(params.timesheetId)
+    const timesheet = params.timesheetId
+      ? await consultantService.getWeeklyTimesheetById(params.timesheetId)
       : params.weekStart
-        ? await consultantService.getWeeklyTimesheet(params.weekStart)
-        : await consultantService.createNewWeeklyTimesheet();
+      ? await consultantService.getWeeklyTimesheet(params.weekStart)
+      : await consultantService.getWeeklyTimesheet();
 
     return (
       <ConsultantTimesheetClient

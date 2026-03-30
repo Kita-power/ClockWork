@@ -15,6 +15,10 @@ type LoadTimesheetResult =
   | { ok: true; timesheet: WeeklyTimesheetRecord }
   | { ok: false; error: string };
 
+type CreateTimesheetResult =
+  | { ok: true; timesheetId: string }
+  | { ok: false; error: string };
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Unexpected error";
@@ -50,6 +54,16 @@ export async function submitConsultantTimesheetAction(
     await consultantService.submitWeeklyTimesheet(input);
     revalidatePath("/consultant");
     return { ok: true, message: "Timesheet submitted" };
+  } catch (error) {
+    return { ok: false, error: getErrorMessage(error) };
+  }
+}
+
+export async function createConsultantTimesheetAction(): Promise<CreateTimesheetResult> {
+  try {
+    const timesheet = await consultantService.createNewWeeklyTimesheet();
+    revalidatePath("/consultant");
+    return { ok: true, timesheetId: timesheet.id };
   } catch (error) {
     return { ok: false, error: getErrorMessage(error) };
   }
