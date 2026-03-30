@@ -101,55 +101,57 @@ export default async function ConsultantPage({
             ) : null}
           </form>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Timesheet ID</TableHead>
-                <TableHead>Week</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Total Hours</TableHead>
-                <TableHead>Last Updated</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTimesheets.length === 0 ? (
+          <div className="max-h-[60vh] overflow-auto rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                    No timesheets found for this month.
-                  </TableCell>
+                  <TableHead>Timesheet ID</TableHead>
+                  <TableHead>Week</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Total Hours</TableHead>
+                  <TableHead>Last Updated</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
-              ) : (
-                filteredTimesheets.map((timesheet) => (
-                  <TableRow key={timesheet.id}>
-                    <TableCell className="font-mono text-xs">{timesheet.id}</TableCell>
-                    <TableCell>
-                      {formatDate(timesheet.weekStart)} to {formatDate(timesheet.weekEnd)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={timesheet.status === "submitted" ? "secondary" : "outline"}>
-                        {timesheet.status === "submitted" ? "Submitted" : "Draft"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{timesheet.totalHours.toFixed(2)}</TableCell>
-                    <TableCell>{formatDateTime(timesheet.updatedAt)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button asChild size="sm" variant="outline">
-                          <Link href={`/consultant/timesheets/${timesheet.id}`}>
-                            {timesheet.status === "submitted" ? "View" : "Continue"}
-                          </Link>
-                        </Button>
-                        {timesheet.status === "draft" ? (
-                          <DeleteDraftButton timesheetId={timesheet.id} />
-                        ) : null}
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {filteredTimesheets.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
+                      No timesheets found for this month.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  filteredTimesheets.map((timesheet) => (
+                    <TableRow key={timesheet.id}>
+                      <TableCell className="font-mono text-xs">{timesheet.id}</TableCell>
+                      <TableCell>
+                        {formatDate(timesheet.weekStart)} to {formatDate(timesheet.weekEnd)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={timesheet.status === "submitted" ? "secondary" : "outline"}>
+                          {timesheet.status === "submitted" ? "Submitted" : "Draft"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{timesheet.totalHours.toFixed(2)}</TableCell>
+                      <TableCell>{formatDateTime(timesheet.updatedAt)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/consultant/timesheets/${timesheet.id}`}>
+                              {timesheet.status === "submitted" ? "View" : "Continue"}
+                            </Link>
+                          </Button>
+                          {timesheet.status === "draft" ? (
+                            <DeleteDraftButton timesheetId={timesheet.id} />
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     );
