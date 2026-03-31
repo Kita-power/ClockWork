@@ -1,6 +1,5 @@
-import { PageTemplate } from "@/components/page-template";
-import { managerService } from "@/services";
+import { redirect } from "next/navigation";
 
-export default function ManagerPage() {
-  return <PageTemplate message={managerService.pageMessage} />;
+export default function ManagerIndexPage() {
+  redirect("/manager/timesheets");
 }
