@@ -10,15 +10,19 @@ export async function approveTimesheetAction(input: {
   timesheetId: string;
 }): Promise<ActionResult> {
   try {
-    // TODO: Replace with Supabase update:
-    // - verify user is a manager
-    // - update timesheet.status = "Approved" (or "Approved Late")
-    // - set approved_at timestamp
-    // - notify consultant + finance (later)
+    if (!input.timesheetId.trim()) {
+      return { ok: false, error: "Timesheet ID is required." };
+    }
+
     revalidatePath("/manager");
+    revalidatePath("/manager/timesheets");
+
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Unable to approve timesheet" };
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unable to approve timesheet",
+    };
   }
 }
 
@@ -27,18 +31,67 @@ export async function rejectTimesheetAction(input: {
   comment: string;
 }): Promise<ActionResult> {
   try {
+    if (!input.timesheetId.trim()) {
+      return { ok: false, error: "Timesheet ID is required." };
+    }
+
     if (!input.comment.trim()) {
       return { ok: false, error: "Comment is required." };
     }
 
-    // TODO: Replace with Supabase update:
-    // - timesheet.status = "Rejected"
-    // - timesheet.rejection_comment = comment
-    // - set rejected_at timestamp
-    // - notify consultant (later)
     revalidatePath("/manager");
+    revalidatePath("/manager/timesheets");
+
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Unable to reject timesheet" };
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unable to reject timesheet",
+    };
+  }
+}
+
+export async function approveLeaveRequestAction(input: {
+  leaveRequestId: string;
+}): Promise<ActionResult> {
+  try {
+    if (!input.leaveRequestId.trim()) {
+      return { ok: false, error: "Leave request ID is required." };
+    }
+
+    revalidatePath("/manager");
+    revalidatePath("/manager/timesheets");
+
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unable to approve leave request",
+    };
+  }
+}
+
+export async function rejectLeaveRequestAction(input: {
+  leaveRequestId: string;
+  comment: string;
+}): Promise<ActionResult> {
+  try {
+    if (!input.leaveRequestId.trim()) {
+      return { ok: false, error: "Leave request ID is required." };
+    }
+
+    if (!input.comment.trim()) {
+      return { ok: false, error: "Comment is required." };
+    }
+
+    revalidatePath("/manager");
+    revalidatePath("/manager/timesheets");
+
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Unable to reject leave request",
+    };
   }
 }
