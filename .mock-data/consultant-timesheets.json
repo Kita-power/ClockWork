@@ -694,5 +694,63 @@
       }
     ],
     "updatedAt": "2026-03-30T14:20:21.952Z"
+  },
+  {
+    "id": "ts-efb313f0-7bff-4f51-9f3b-4d05ca5ea71d",
+    "weekStart": "2026-06-01",
+    "weekEnd": "2026-06-07",
+    "status": "draft",
+    "entries": [
+      {
+        "date": "2026-06-01",
+        "dayLabel": "Mon",
+        "projectCode": "PRO-001",
+        "hours": 0.25,
+        "notes": ""
+      },
+      {
+        "date": "2026-06-02",
+        "dayLabel": "Tue",
+        "projectCode": "PRO-001",
+        "hours": 0.25,
+        "notes": ""
+      },
+      {
+        "date": "2026-06-03",
+        "dayLabel": "Wed",
+        "projectCode": "PRO-001",
+        "hours": 0.25,
+        "notes": ""
+      },
+      {
+        "date": "2026-06-04",
+        "dayLabel": "Thu",
+        "projectCode": "PRO-001",
+        "hours": 0.25,
+        "notes": ""
+      },
+      {
+        "date": "2026-06-05",
+        "dayLabel": "Fri",
+        "projectCode": "PRO-001",
+        "hours": 0.25,
+        "notes": ""
+      },
+      {
+        "date": "2026-06-06",
+        "dayLabel": "Sat",
+        "projectCode": "PRO-001",
+        "hours": 0.25,
+        "notes": ""
+      },
+      {
+        "date": "2026-06-07",
+        "dayLabel": "Sun",
+        "projectCode": "PRO-001",
+        "hours": 0.25,
+        "notes": ""
+      }
+    ],
+    "updatedAt": "2026-04-02T09:45:36.139Z"
   }
 ]

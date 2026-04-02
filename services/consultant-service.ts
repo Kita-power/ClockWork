@@ -48,6 +48,10 @@ const MOCK_TIMESHEET_STORE_PATH = join(
   "consultant-timesheets.json",
 );
 
+function normalizeProjectCode(projectCode: string): string {
+  return projectCode.trim().toUpperCase();
+}
+
 function toIsoDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -95,11 +99,18 @@ function buildEntry(date: Date): WeeklyTimesheetEntry {
   };
 }
 
-function buildWeekEntries(weekStart: string): WeeklyTimesheetEntry[] {
+function buildWeekEntries(
+  weekStart: string,
+  projectCode = "",
+): WeeklyTimesheetEntry[] {
+  const normalizedProjectCode = normalizeProjectCode(projectCode);
   const startDate = resolveWeekStart(weekStart);
   return Array.from({ length: 7 }, (_, index) => {
     const current = addDays(startDate, index);
-    return buildEntry(current);
+    return {
+      ...buildEntry(current),
+      projectCode: normalizedProjectCode,
+    };
   });
 }
 
@@ -113,6 +124,7 @@ function buildStoredTimesheet(
     id?: string;
     status?: TimesheetStatus;
     entries?: WeeklyTimesheetEntry[];
+    projectCode?: string;
     updatedAt?: string;
   },
 ): StoredWeeklyTimesheetRecord {
@@ -125,7 +137,10 @@ function buildStoredTimesheet(
     weekStart: normalizedWeekStart,
     weekEnd: toIsoDate(endDate),
     status: input?.status ?? "draft",
-    entries: cloneEntries(input?.entries ?? buildWeekEntries(normalizedWeekStart)),
+    entries: cloneEntries(
+      input?.entries ??
+        buildWeekEntries(normalizedWeekStart, input?.projectCode),
+    ),
     updatedAt: input?.updatedAt ?? new Date().toISOString(),
   };
 }
@@ -279,30 +294,38 @@ function upsertTimesheet(
 }
 
 function validateTimesheetEntries(entries: WeeklyTimesheetEntry[]): void {
+  const normalizedProjectCodes = entries
+    .map((entry) => normalizeProjectCode(entry.projectCode))
+    .filter((value) => value.length > 0);
+
+  const uniqueProjectCodes = Array.from(new Set(normalizedProjectCodes));
+
+  if (uniqueProjectCodes.length === 0) {
+    throw new Error("Select a project code before saving this timesheet.");
+  }
+
+  if (uniqueProjectCodes.length > 1) {
+    throw new Error("Only one project code is allowed per weekly timesheet.");
+  }
+
+  const hasBlankProjectRow = entries.some(
+    (entry) => normalizeProjectCode(entry.projectCode).length === 0,
+  );
+
+  if (hasBlankProjectRow) {
+    throw new Error("Every day must use the selected weekly project code.");
+  }
+
   const invalidRow = entries.find((entry) => {
-    const hasProjectCode = entry.projectCode.trim().length > 0;
-    const hasHours = entry.hours > 0;
-    const hasPairError = (hasProjectCode && !hasHours) || (!hasProjectCode && hasHours);
     const hasInvalidHours = entry.hours < 0 || entry.hours > 24;
 
-    return hasPairError || hasInvalidHours;
+    return hasInvalidHours;
   });
 
   if (!invalidRow) return;
 
-  const hasProjectCode = invalidRow.projectCode.trim().length > 0;
-  const hasHours = invalidRow.hours > 0;
-
   if (invalidRow.hours < 0 || invalidRow.hours > 24) {
     throw new Error("Hours must be between 0 and 24.");
-  }
-
-  if (hasProjectCode && !hasHours) {
-    throw new Error("Hours are required when project code is entered.");
-  }
-
-  if (!hasProjectCode && hasHours) {
-    throw new Error("Project code is required when hours are entered.");
   }
 }
 
