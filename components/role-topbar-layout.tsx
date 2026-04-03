@@ -41,7 +41,7 @@ export function RoleTopbarLayout({
       id: "1",
       title: "Timesheet Submitted",
       description: "Your weekly timesheet has been successfully submitted",
-      timestamp: new Date(Date.now() - 2 * 3600000),
+      timestamp: new Date("2026-04-03T08:00:00.000Z"),
       read: false,
     },
   ]);
