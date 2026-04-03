@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -36,15 +36,19 @@ export function RoleTopbarLayout({
     .slice(0, 2)
     .join("");
 
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: "1",
-      title: "Timesheet Submitted",
-      description: "Your weekly timesheet has been successfully submitted",
-      timestamp: new Date("2026-04-03T08:00:00.000Z"),
-      read: false,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    setNotifications([
+      {
+        id: "1",
+        title: "Timesheet Submitted",
+        description: "Your weekly timesheet has been successfully submitted",
+        timestamp: new Date(Date.now() - 2 * 3600000),
+        read: false,
+      },
+    ]);
+  }, []);
 
   const handleCloseNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { connection } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,17 @@ type ConsultantPageProps = {
   }>;
 };
 
-export default async function ConsultantPage({
+export default function ConsultantPage({
+  searchParams,
+}: ConsultantPageProps) {
+  return (
+    <Suspense fallback={<ConsultantPageSkeleton />}>
+      <ConsultantPageContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function ConsultantPageContent({
   searchParams,
 }: ConsultantPageProps) {
   await connection();
@@ -175,4 +186,21 @@ export default async function ConsultantPage({
       </Card>
     );
   }
+}
+
+function ConsultantPageSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <CardTitle>My Timesheets</CardTitle>
+          <CardDescription>Loading timesheets...</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="h-9 w-[180px] rounded-md bg-muted" />
+        <div className="h-48 rounded-md border bg-muted/30" />
+      </CardContent>
+    </Card>
+  );
 }
