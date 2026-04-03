@@ -35,6 +35,11 @@ export default async function ConsultantTimesheetDetailPage({
     }
 
     const fallback = await consultantService.getWeeklyTimesheet();
-    return <ConsultantTimesheetClient initialTimesheet={fallback} initialError={message} />;
+    return (
+      <ConsultantTimesheetClient
+        initialTimesheet={fallback}
+        initialError={message}
+      />
+    );
   }
 }

@@ -29,7 +29,7 @@ export function CreateTimesheetButton() {
           });
         }}
       >
-        {isPending ? "Creating..." : "Create Timesheet"}
+        {isPending ? "Creating..." : "New Timesheet"}
       </Button>
       {errorMessage ? <p className="text-xs text-destructive">{errorMessage}</p> : null}
     </div>

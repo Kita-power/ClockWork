@@ -35,6 +35,54 @@ type ConsultantTimesheetClientProps = {
   initialError: string | null;
 };
 
+function normalizeProjectCode(projectCode: string): string {
+  return projectCode.trim().toUpperCase();
+}
+
+function applyProjectCodeToEntries(
+  entries: WeeklyTimesheetEntry[],
+  projectCode: string,
+): WeeklyTimesheetEntry[] {
+  const normalizedProjectCode = normalizeProjectCode(projectCode);
+  return entries.map((entry) => ({
+    ...entry,
+    projectCode: normalizedProjectCode,
+  }));
+}
+
+function resolveSelectedProjectCode(
+  timesheet: WeeklyTimesheetRecord,
+): string {
+  const firstEntryProjectCode = timesheet.entries.find(
+    (entry) => normalizeProjectCode(entry.projectCode).length > 0,
+  )?.projectCode;
+
+  const normalizedEntryProjectCode = firstEntryProjectCode
+    ? normalizeProjectCode(firstEntryProjectCode)
+    : "";
+
+  if (normalizedEntryProjectCode) {
+    return normalizedEntryProjectCode;
+  }
+
+  return "";
+}
+
+function initializeTimesheet(
+  timesheet: WeeklyTimesheetRecord,
+): WeeklyTimesheetRecord {
+  const selectedProjectCode = resolveSelectedProjectCode(timesheet);
+
+  if (!selectedProjectCode) {
+    return timesheet;
+  }
+
+  return {
+    ...timesheet,
+    entries: applyProjectCodeToEntries(timesheet.entries, selectedProjectCode),
+  };
+}
+
 function formatDate(date: string): string {
   return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
     month: "short",
@@ -47,7 +95,12 @@ export function ConsultantTimesheetClient({
   initialError,
 }: ConsultantTimesheetClientProps) {
   const router = useRouter();
-  const [timesheet, setTimesheet] = useState(initialTimesheet);
+  const [timesheet, setTimesheet] = useState(() =>
+    initializeTimesheet(initialTimesheet),
+  );
+  const [selectedProjectCode, setSelectedProjectCode] = useState(() =>
+    resolveSelectedProjectCode(initialTimesheet),
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -68,32 +121,7 @@ export function ConsultantTimesheetClient({
     [timesheet.entries],
   );
 
-  const rowValidationErrors = useMemo(() => {
-    return timesheet.entries
-      .map((entry, index) => {
-        const hasProjectCode = entry.projectCode.trim().length > 0;
-        const hasHours = entry.hours > 0;
-
-        if (hasProjectCode && !hasHours) {
-          return {
-            index,
-            message: "Hours are required when a project code is entered.",
-          };
-        }
-
-        if (!hasProjectCode && hasHours) {
-          return {
-            index,
-            message: "Project code is required when hours are entered.",
-          };
-        }
-
-        return null;
-      })
-      .filter((item): item is { index: number; message: string } => item !== null);
-  }, [timesheet.entries]);
-
-  const hasPairValidationErrors = rowValidationErrors.length > 0;
+  const hasProjectCodeValidationError = selectedProjectCode.length === 0;
 
   function updateEntry(
     index: number,
@@ -120,10 +148,24 @@ export function ConsultantTimesheetClient({
           return;
         }
 
-        setTimesheet(result.timesheet);
+        const nextSelectedProjectCode = resolveSelectedProjectCode(result.timesheet);
+
+        setSelectedProjectCode(nextSelectedProjectCode);
+        setTimesheet(initializeTimesheet(result.timesheet));
         router.replace(`/consultant/timesheets/${result.timesheet.id}`);
       });
     });
+  }
+
+  function updateWeeklyProjectCode(projectCode: string): void {
+    if (isSubmitted) return;
+
+    const normalizedProjectCode = normalizeProjectCode(projectCode);
+    setSelectedProjectCode(normalizedProjectCode);
+    setTimesheet((prev) => ({
+      ...prev,
+      entries: applyProjectCodeToEntries(prev.entries, normalizedProjectCode),
+    }));
   }
 
   function saveDraft(): void {
@@ -200,11 +242,23 @@ export function ConsultantTimesheetClient({
             />
           </div>
 
+          <div className="grid gap-3 sm:max-w-xs">
+            <label className="text-sm font-medium" htmlFor="projectCode">
+              Project code
+            </label>
+            <Input
+              id="projectCode"
+              value={selectedProjectCode}
+              onChange={(event) => updateWeeklyProjectCode(event.target.value)}
+              placeholder="e.g. PROJ-001"
+              disabled={isSubmitted || isPending}
+            />
+          </div>
+
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[170px]">Day</TableHead>
-                <TableHead className="w-[140px]">Project</TableHead>
                 <TableHead className="w-[120px]">Hours</TableHead>
                 <TableHead>Notes</TableHead>
               </TableRow>
@@ -220,26 +274,6 @@ export function ConsultantTimesheetClient({
                   </TableCell>
                   <TableCell>
                     <Input
-                      className={
-                        entry.projectCode.trim().length === 0 && entry.hours > 0
-                          ? "border-destructive"
-                          : undefined
-                      }
-                      value={entry.projectCode}
-                      onChange={(event) =>
-                        updateEntry(index, { projectCode: event.target.value })
-                      }
-                      placeholder="e.g. PROJ-001"
-                      disabled={isSubmitted || isPending}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      className={
-                        entry.projectCode.trim().length > 0 && entry.hours <= 0
-                          ? "border-destructive"
-                          : undefined
-                      }
                       type="number"
                       min={0}
                       max={24}
@@ -282,10 +316,9 @@ export function ConsultantTimesheetClient({
             </p>
           ) : null}
 
-          {hasPairValidationErrors ? (
+          {hasProjectCodeValidationError ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              Each row must include both project code and hours together. Fix row(s):{" "}
-              {rowValidationErrors.map((item) => item.index + 1).join(", ")}.
+              Select a project code for this weekly timesheet.
             </p>
           ) : null}
 
@@ -299,7 +332,12 @@ export function ConsultantTimesheetClient({
             <Button
               variant="outline"
               onClick={saveDraft}
-              disabled={isPending || isSubmitted || hasInvalidHours || hasPairValidationErrors}
+              disabled={
+                isPending ||
+                isSubmitted ||
+                hasInvalidHours ||
+                hasProjectCodeValidationError
+              }
             >
               Save Draft
             </Button>
@@ -309,7 +347,7 @@ export function ConsultantTimesheetClient({
                 isPending ||
                 isSubmitted ||
                 hasInvalidHours ||
-                hasPairValidationErrors ||
+                hasProjectCodeValidationError ||
                 totalHours <= 0
               }
             >
