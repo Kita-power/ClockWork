@@ -101,6 +101,7 @@ export function ConsultantTimesheetClient({
   const [selectedProjectCode, setSelectedProjectCode] = useState(() =>
     resolveSelectedProjectCode(initialTimesheet),
   );
+  const [hoursDraftByIndex, setHoursDraftByIndex] = useState<Record<number, string>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -278,9 +279,36 @@ export function ConsultantTimesheetClient({
                       min={0}
                       max={24}
                       step={0.25}
-                      value={entry.hours}
+                      value={hoursDraftByIndex[index] ?? String(entry.hours)}
+                      onFocus={() => {
+                        setHoursDraftByIndex((prev) => ({
+                          ...prev,
+                          [index]: String(entry.hours),
+                        }));
+                      }}
+                      onBlur={() => {
+                        const draft = hoursDraftByIndex[index] ?? String(entry.hours);
+                        const normalized = Number.parseFloat(draft);
+
+                        updateEntry(index, {
+                          hours: Number.isNaN(normalized) ? 0 : normalized,
+                        });
+
+                        setHoursDraftByIndex((prev) => {
+                          const next = { ...prev };
+                          delete next[index];
+                          return next;
+                        });
+                      }}
                       onChange={(event) => {
-                        const nextHours = Number.parseFloat(event.target.value);
+                        const rawValue = event.target.value;
+                        const nextHours = Number.parseFloat(rawValue);
+
+                        setHoursDraftByIndex((prev) => ({
+                          ...prev,
+                          [index]: rawValue,
+                        }));
+
                         updateEntry(index, {
                           hours: Number.isNaN(nextHours) ? 0 : nextHours,
                         });
