@@ -6,12 +6,19 @@ import { join } from "node:path";
 
 export type TimesheetStatus = "draft" | "submitted";
 
+export type WeeklyTimesheetTask = {
+  id: string;
+  title: string;
+  hours: number;
+};
+
 export type WeeklyTimesheetEntry = {
   date: string;
   dayLabel: string;
   projectCode: string;
   hours: number;
   notes: string;
+  tasks?: WeeklyTimesheetTask[];
 };
 
 export type WeeklyTimesheetRecord = {
@@ -96,6 +103,7 @@ function buildEntry(date: Date): WeeklyTimesheetEntry {
     projectCode: "",
     hours: 0,
     notes: "",
+    tasks: [],
   };
 }
 
@@ -314,6 +322,18 @@ function validateTimesheetEntries(entries: WeeklyTimesheetEntry[]): void {
 
   if (hasBlankProjectRow) {
     throw new Error("Every day must use the selected weekly project code.");
+  }
+
+  const hasTaskHoursOverflow = entries.some((entry) => {
+    const taskHours = (entry.tasks ?? []).reduce((sum, task) => {
+      return sum + (Number.isFinite(task.hours) ? task.hours : 0);
+    }, 0);
+
+    return taskHours > 24;
+  });
+
+  if (hasTaskHoursOverflow) {
+    throw new Error("Task hours for a day cannot exceed 24.");
   }
 
   const invalidRow = entries.find((entry) => {
