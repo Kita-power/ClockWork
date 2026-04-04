@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { adminService } from "@/services";
 
 type ActionResult =
-  | { ok: true; temporaryPassword?: string }
+  | { ok: true; temporaryPassword?: string; email?: string }
   | {
       ok: false;
       error: string;
@@ -86,14 +86,29 @@ export async function createAdminUserAction(input: {
   }
 }
 
-export async function updateAdminUserRoleAction(input: {
+export async function resetAdminUserPasswordAction(input: {
   userId: string;
-  role: string;
 }): Promise<ActionResult> {
   try {
-    await adminService.updateUserRole(input.userId, input.role);
+    const temporaryPassword = generateTemporaryPassword();
+    const authAdmin = createAdminAuthClient();
+
+    const { data, error } = await authAdmin.auth.admin.updateUserById(
+      input.userId,
+      { password: temporaryPassword },
+    );
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const email = data.user?.email;
+    if (!email) {
+      throw new Error("Could not read user email after password update");
+    }
+
     revalidatePath("/admin/users");
-    return { ok: true };
+    return { ok: true, temporaryPassword, email };
   } catch (error) {
     return { ok: false, error: getErrorMessage(error) };
   }

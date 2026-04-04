@@ -2,31 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { TopbarUserMenu } from "@/components/topbar-user-menu";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useUser } from "@/hooks/use-user";
+import { formatRoleLabel } from "@/lib/format-role-label";
 
 type RoleTopbarLayoutProps = {
-  roleTag: string;
-  userName: string;
   subtitle: string;
   children: React.ReactNode;
 };
 
-export function RoleTopbarLayout({
-  roleTag,
-  userName,
-  subtitle,
-  children,
-}: RoleTopbarLayoutProps) {
+export function RoleTopbarLayout({ subtitle, children }: RoleTopbarLayoutProps) {
   const pathname = usePathname();
-  const initials = userName
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .slice(0, 2)
-    .join("");
+  const { fullName, email, role, isLoading, isAuthenticated } = useUser();
+  const displayName =
+    fullName.trim() || email || "User";
 
   return (
     <main className="min-h-svh bg-muted/30">
@@ -46,12 +38,26 @@ export function RoleTopbarLayout({
 
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
-              <Avatar className="size-8">
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-              <p className="text-sm font-semibold">{userName}</p>
+              {isLoading ? (
+                <p className="text-sm font-semibold text-muted-foreground">Loading…</p>
+              ) : isAuthenticated ? (
+                <TopbarUserMenu userName={displayName} />
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="text-sm font-semibold underline underline-offset-4"
+                >
+                  Log in
+                </Link>
+              )}
             </div>
-            <Badge variant="secondary">{roleTag}</Badge>
+            <Badge variant="secondary">
+              {isLoading
+                ? "…"
+                : isAuthenticated
+                  ? formatRoleLabel(role)
+                  : "Guest"}
+            </Badge>
           </div>
         </div>
         <Separator />
