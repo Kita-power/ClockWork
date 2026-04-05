@@ -348,6 +348,7 @@ export function ConsultantTimesheetClient({
   const savedProjectCodeRef = useRef<string>(
     normalizeProjectCode(initialSelectedProjectCode),
   );
+  const errorMessageRef = useRef<HTMLParagraphElement>(null);
 
   const isSubmitted = timesheet.status === "submitted";
 
@@ -560,6 +561,11 @@ export function ConsultantTimesheetClient({
       }).then((result) => {
         if (!result.ok) {
           setErrorMessage(result.error);
+          setIsLeaveDialogOpen(false);
+          // Scroll to error message so user can see the duplicate timesheet error
+          setTimeout(() => {
+            errorMessageRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 100);
           return;
         }
 
@@ -1237,7 +1243,7 @@ export function ConsultantTimesheetClient({
           </div>
 
           {errorMessage ? (
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p ref={errorMessageRef} className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {errorMessage}
             </p>
           ) : null}
@@ -1316,7 +1322,7 @@ export function ConsultantTimesheetClient({
                     Cancel
                   </Button>
                   <Button onClick={submitTimesheet} disabled={isPending}>
-                    Yes, submit timesheet
+                    {isPending ? "Submitting..." : "Yes, submit timesheet"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1352,7 +1358,7 @@ export function ConsultantTimesheetClient({
               Leave without saving
             </Button>
             <Button onClick={saveDraftThenNavigate} disabled={isPending}>
-              Save Draft
+              {isPending ? "Saving..." : "Save Draft"}
             </Button>
           </DialogFooter>
         </DialogContent>
