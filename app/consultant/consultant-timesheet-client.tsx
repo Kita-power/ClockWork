@@ -512,8 +512,8 @@ export function ConsultantTimesheetClient({
         setSuccessMessage(result.message);
         router.replace(
           useNewRouteForDrafts
-            ? `/consultant/new?timesheetId=${timesheet.id}`
-            : `/consultant/timesheets/${timesheet.id}`,
+            ? `/consultant/new?timesheetId=${result.timesheetId ?? timesheet.id}`
+            : `/consultant/timesheets/${result.timesheetId ?? timesheet.id}`,
         );
         router.refresh();
       });

@@ -29,8 +29,8 @@ export default async function ConsultantNewTimesheetPage({
       params.timesheetId
         ? consultantService.getWeeklyTimesheetById(params.timesheetId)
         : params.weekStart
-        ? consultantService.getWeeklyTimesheet(params.weekStart)
-        : consultantService.getWeeklyTimesheet(),
+        ? consultantService.getWeeklyDraftTimesheet(params.weekStart)
+        : consultantService.createNewWeeklyTimesheet(),
       consultantService.listAssignedProjectsForCurrentConsultant(),
     ]);
 
@@ -48,7 +48,7 @@ export default async function ConsultantNewTimesheetPage({
       error instanceof Error ? error.message : "Unable to load timesheet";
 
     const [fallback, assignedProjects] = await Promise.all([
-      consultantService.getWeeklyTimesheet(),
+      consultantService.createNewWeeklyTimesheet(),
       consultantService.listAssignedProjectsForCurrentConsultant(),
     ]);
     return (

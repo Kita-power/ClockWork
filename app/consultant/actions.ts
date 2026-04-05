@@ -50,9 +50,9 @@ export async function saveConsultantTimesheetDraftAction(
   input: SaveTimesheetInput,
 ): Promise<ActionResult> {
   try {
-    await consultantService.saveWeeklyTimesheetDraft(input);
+    const result = await consultantService.saveWeeklyTimesheetDraft(input);
     revalidatePath("/consultant");
-    return { ok: true, message: "Draft saved" };
+    return { ok: true, message: "Draft saved", timesheetId: result.timesheetId };
   } catch (error) {
     return { ok: false, error: getErrorMessage(error) };
   }

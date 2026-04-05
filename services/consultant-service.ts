@@ -147,23 +147,29 @@ function toWeeklyRecordFromDb(
   entries: SupabaseTimeEntryRow[],
   projectCodeById: Map<string, string>,
 ): WeeklyTimesheetRecord {
+  const weekEntries = buildWeekEntries(row.week_start_date);
+
+  for (const entry of entries) {
+    const index = weekEntries.findIndex((weekEntry) => weekEntry.date === entry.entry_date);
+    if (index === -1) {
+      continue;
+    }
+
+    weekEntries[index] = {
+      ...weekEntries[index],
+      projectCode: projectCodeById.get(entry.project_id) ?? weekEntries[index].projectCode,
+      hours: toNumber(entry.hours),
+      notes: entry.notes ?? "",
+      tasks: [],
+    };
+  }
+
   return {
     id: row.id,
     weekStart: row.week_start_date,
     weekEnd: row.week_end_date,
     status: normalizeTimesheetStatus(row.status),
-    entries: entries
-      .sort((left, right) => left.entry_date.localeCompare(right.entry_date))
-      .map((entry) => ({
-        date: entry.entry_date,
-        dayLabel: new Date(`${entry.entry_date}T00:00:00`).toLocaleDateString("en-US", {
-          weekday: "short",
-        }),
-        projectCode: projectCodeById.get(entry.project_id) ?? "",
-        hours: toNumber(entry.hours),
-        notes: entry.notes ?? "",
-        tasks: [],
-      })),
+    entries: weekEntries,
   };
 }
 
@@ -178,7 +184,7 @@ async function getAuthenticatedConsultantId(): Promise<string | null> {
   return data.user?.id ?? null;
 }
 
-async function listSubmittedTimesheetSummariesForConsultant(
+async function listTimesheetSummariesForConsultant(
   consultantId: string,
 ): Promise<TimesheetSummaryRecord[]> {
   const supabase = await createClient();
@@ -188,7 +194,6 @@ async function listSubmittedTimesheetSummariesForConsultant(
       "id, consultant_id, week_start_date, week_end_date, status, total_hours, submitted_at, approved_at, processed_at, being_processed_at, export_completed, created_at, updated_at",
     )
     .eq("consultant_id", consultantId)
-    .eq("status", "submitted")
     .order("week_start_date", { ascending: false });
 
   if (error) {
@@ -266,7 +271,51 @@ async function findSubmittedTimesheetByWeekStart(
   return (data as SupabaseTimesheetRow | null) ?? null;
 }
 
-async function findSubmittedTimesheetById(
+async function findDraftTimesheetByWeekStart(
+  consultantId: string,
+  weekStart: string,
+): Promise<SupabaseTimesheetRow | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("timesheets")
+    .select(
+      "id, consultant_id, week_start_date, week_end_date, status, total_hours, submitted_at, approved_at, processed_at, being_processed_at, export_completed, created_at, updated_at",
+    )
+    .eq("consultant_id", consultantId)
+    .eq("week_start_date", weekStart)
+    .eq("status", "draft")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as SupabaseTimesheetRow | null) ?? null;
+}
+
+async function findDraftTimesheetById(
+  consultantId: string,
+  timesheetId: string,
+): Promise<SupabaseTimesheetRow | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("timesheets")
+    .select(
+      "id, consultant_id, week_start_date, week_end_date, status, total_hours, submitted_at, approved_at, processed_at, being_processed_at, export_completed, created_at, updated_at",
+    )
+    .eq("consultant_id", consultantId)
+    .eq("id", timesheetId)
+    .eq("status", "draft")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as SupabaseTimesheetRow | null) ?? null;
+}
+
+async function findTimesheetById(
   consultantId: string,
   timesheetId: string,
 ): Promise<SupabaseTimesheetRow | null> {
@@ -461,7 +510,7 @@ export const consultantService = {
       return [];
     }
 
-    return listSubmittedTimesheetSummariesForConsultant(consultantId);
+    return listTimesheetSummariesForConsultant(consultantId);
   },
 
   async createNewWeeklyTimesheet(): Promise<WeeklyTimesheetRecord> {
@@ -514,38 +563,138 @@ export const consultantService = {
       throw new Error("Timesheet not found");
     }
 
-    const submittedRecord = await findSubmittedTimesheetById(consultantId, timesheetId);
-    if (submittedRecord) {
-      const entries = await fetchSubmittedTimesheetEntries(submittedRecord.id);
+    const record = await findTimesheetById(consultantId, timesheetId);
+    if (record) {
+      const entries = await fetchSubmittedTimesheetEntries(record.id);
       const projectIds = Array.from(new Set(entries.map((entry) => entry.project_id)));
       const projectCodeById = await fetchProjectCodesByIds(projectIds);
 
-      return toWeeklyRecordFromDb(submittedRecord, entries, projectCodeById);
+      return toWeeklyRecordFromDb(record, entries, projectCodeById);
     }
 
     throw new Error("Timesheet not found");
   },
 
-  async saveWeeklyTimesheetDraft(input: SaveTimesheetInput): Promise<{ savedAt: string }> {
+  async saveWeeklyTimesheetDraft(input: SaveTimesheetInput): Promise<{ savedAt: string; timesheetId: string }> {
     validateTimesheetEntries(input.entries);
     const consultantId = await getAuthenticatedConsultantId();
+    if (!consultantId) {
+      throw new Error("No authenticated user");
+    }
+
     const startDate = resolveWeekStart(input.weekStart);
     const normalizedWeekStart = toIsoDate(startDate);
 
-    if (consultantId) {
-      const submittedRecord = await findSubmittedTimesheetByWeekStart(
-        consultantId,
-        normalizedWeekStart,
-      );
+    const assignedProjects = await listAssignedProjectsForConsultantId(consultantId);
+    const selectedProjectCode = normalizeProjectCode(
+      input.entries.find((entry) => normalizeProjectCode(entry.projectCode).length > 0)?.projectCode ?? "",
+    );
 
-      if (submittedRecord) {
-        throw new Error("This timesheet has already been submitted.");
+    const submittedRecord = await findSubmittedTimesheetByWeekStart(
+      consultantId,
+      normalizedWeekStart,
+    );
+
+    if (submittedRecord) {
+      const existingEntries = await fetchSubmittedTimesheetEntries(submittedRecord.id);
+      const existingProjectIds = Array.from(new Set(existingEntries.map((entry) => entry.project_id)));
+      const existingProjectCodeMap = await fetchProjectCodesByIds(existingProjectIds);
+      const existingProjectCode = existingProjectCodeMap.get(
+        existingProjectIds[0] ?? "",
+      ) ?? "";
+
+      if (normalizeProjectCode(existingProjectCode) === selectedProjectCode) {
+        throw new Error("A timesheet for this week with the same project code has already been submitted.");
+      }
+    }
+    const selectedProject = assignedProjects.find(
+      (project) => normalizeProjectCode(project.code) === selectedProjectCode,
+    );
+
+    if (!selectedProject) {
+      throw new Error("The selected project is not assigned to your account.");
+    }
+
+    const providedTimesheetId =
+      input.id && !input.id.startsWith("ts_") ? input.id : undefined;
+    const existingDraft = providedTimesheetId
+      ? await findDraftTimesheetById(consultantId, providedTimesheetId)
+      : await findDraftTimesheetByWeekStart(consultantId, normalizedWeekStart);
+
+    const timesheetId = existingDraft?.id ?? buildDatabaseTimesheetId();
+
+    const savedAt = new Date().toISOString();
+    const draftPayload = {
+      id: timesheetId,
+      consultant_id: consultantId,
+      project_id: selectedProject.id,
+      being_processed_by: null,
+      week_start_date: normalizedWeekStart,
+      week_end_date: toIsoDate(addDays(startDate, 6)),
+      status: "draft" as const,
+      total_hours: sumEntriesHours(input.entries),
+      submitted_at: null,
+      approved_at: null,
+      processed_at: null,
+      being_processed_at: null,
+      export_completed: false,
+      updated_at: savedAt,
+    };
+
+    const supabase = await createClient();
+
+    if (existingDraft) {
+      const { error: draftUpdateError } = await supabase
+        .from("timesheets")
+        .update(draftPayload)
+        .eq("id", timesheetId)
+        .eq("consultant_id", consultantId)
+        .eq("status", "draft");
+
+      if (draftUpdateError) {
+        throw new Error(draftUpdateError.message);
+      }
+    } else {
+      const { error: draftInsertError } = await supabase.from("timesheets").insert({
+        ...draftPayload,
+        created_at: savedAt,
+      });
+
+      if (draftInsertError) {
+        throw new Error(draftInsertError.message);
       }
     }
 
-    const savedAt = new Date().toISOString();
+    const { error: deleteEntriesError } = await supabase
+      .from("time_entries")
+      .delete()
+      .eq("timesheet_id", timesheetId);
 
-    return { savedAt };
+    if (deleteEntriesError) {
+      throw new Error(deleteEntriesError.message);
+    }
+
+    const draftEntriesToPersist = input.entries.filter(
+      (entry) => Number.isFinite(entry.hours) && entry.hours > 0,
+    );
+
+    if (draftEntriesToPersist.length > 0) {
+      const { error: draftEntriesInsertError } = await supabase.from("time_entries").insert(
+        draftEntriesToPersist.map((entry) => ({
+          timesheet_id: timesheetId,
+          project_id: selectedProject.id,
+          entry_date: entry.date,
+          hours: entry.hours,
+          notes: entry.notes.trim(),
+        })),
+      );
+
+      if (draftEntriesInsertError) {
+        throw new Error(draftEntriesInsertError.message);
+      }
+    }
+
+    return { savedAt, timesheetId };
   },
 
   async submitWeeklyTimesheet(input: SaveTimesheetInput): Promise<{ submittedAt: string; timesheetId: string }> {
@@ -576,16 +725,31 @@ export const consultantService = {
     );
 
     if (submittedRecord) {
-      throw new Error("This timesheet has already been submitted.");
+      const existingEntries = await fetchSubmittedTimesheetEntries(submittedRecord.id);
+      const existingProjectIds = Array.from(new Set(existingEntries.map((entry) => entry.project_id)));
+      const existingProjectCodeMap = await fetchProjectCodesByIds(existingProjectIds);
+      const existingProjectCode = existingProjectCodeMap.get(
+        existingProjectIds[0] ?? "",
+      ) ?? "";
+
+      if (normalizeProjectCode(existingProjectCode) === selectedProjectCode) {
+        throw new Error("A timesheet for this week with the same project code has already been submitted.");
+      }
     }
 
     const submittedAt = new Date().toISOString();
-    const timesheetId = buildDatabaseTimesheetId();
+    const providedTimesheetId =
+      input.id && !input.id.startsWith("ts_") ? input.id : undefined;
+    const existingDraft = providedTimesheetId
+      ? await findDraftTimesheetById(consultantId, providedTimesheetId)
+      : null;
+    const timesheetId = existingDraft?.id ?? buildDatabaseTimesheetId();
     const preparedEntries = normalizeSubmittedEntries(input.entries);
 
     const timesheetPayload = {
       id: timesheetId,
       consultant_id: consultantId,
+      project_id: selectedProject.id,
       being_processed_by: null,
       week_start_date: normalizedWeekStart,
       week_end_date: toIsoDate(addDays(startDate, 6)),
@@ -596,17 +760,42 @@ export const consultantService = {
       processed_at: null,
       being_processed_at: null,
       export_completed: false,
-      created_at: submittedAt,
       updated_at: submittedAt,
     };
 
     const supabase = await createClient();
-    const { error: timesheetInsertError } = await supabase
-      .from("timesheets")
-      .insert(timesheetPayload);
 
-    if (timesheetInsertError) {
-      throw new Error(timesheetInsertError.message);
+    if (existingDraft) {
+      const { error: timesheetUpdateError } = await supabase
+        .from("timesheets")
+        .update(timesheetPayload)
+        .eq("id", timesheetId)
+        .eq("consultant_id", consultantId)
+        .eq("status", "draft");
+
+      if (timesheetUpdateError) {
+        throw new Error(timesheetUpdateError.message);
+      }
+
+      const { error: deleteDraftEntriesError } = await supabase
+        .from("time_entries")
+        .delete()
+        .eq("timesheet_id", timesheetId);
+
+      if (deleteDraftEntriesError) {
+        throw new Error(deleteDraftEntriesError.message);
+      }
+    } else {
+      const { error: timesheetInsertError } = await supabase
+        .from("timesheets")
+        .insert({
+          ...timesheetPayload,
+          created_at: submittedAt,
+        });
+
+      if (timesheetInsertError) {
+        throw new Error(timesheetInsertError.message);
+      }
     }
 
     const { error: entriesInsertError } = await supabase.from("time_entries").insert(
@@ -620,7 +809,15 @@ export const consultantService = {
     );
 
     if (entriesInsertError) {
-      await supabase.from("timesheets").delete().eq("id", timesheetId);
+      if (existingDraft) {
+        await supabase
+          .from("timesheets")
+          .update({ status: "draft", submitted_at: null, updated_at: submittedAt })
+          .eq("id", timesheetId)
+          .eq("consultant_id", consultantId);
+      } else {
+        await supabase.from("timesheets").delete().eq("id", timesheetId);
+      }
       throw new Error(entriesInsertError.message);
     }
 
@@ -628,6 +825,35 @@ export const consultantService = {
   },
 
   async deleteDraftTimesheet(timesheetId: string): Promise<void> {
-    return;
+    if (timesheetId.startsWith("ts_")) {
+      return;
+    }
+
+    const consultantId = await getAuthenticatedConsultantId();
+    if (!consultantId) {
+      throw new Error("No authenticated user");
+    }
+
+    const supabase = await createClient();
+
+    const { error: deleteEntriesError } = await supabase
+      .from("time_entries")
+      .delete()
+      .eq("timesheet_id", timesheetId);
+
+    if (deleteEntriesError) {
+      throw new Error(deleteEntriesError.message);
+    }
+
+    const { error: deleteDraftError } = await supabase
+      .from("timesheets")
+      .delete()
+      .eq("id", timesheetId)
+      .eq("consultant_id", consultantId)
+      .eq("status", "draft");
+
+    if (deleteDraftError) {
+      throw new Error(deleteDraftError.message);
+    }
   },
 };
