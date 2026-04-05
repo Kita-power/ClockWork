@@ -14,6 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -28,6 +35,7 @@ import {
 } from "./actions";
 import { cn } from "@/lib/utils";
 import type {
+  ConsultantAssignedProject,
   WeeklyTimesheetEntry,
   WeeklyTimesheetRecord,
   WeeklyTimesheetTask,
@@ -35,6 +43,7 @@ import type {
 
 type ConsultantTimesheetClientProps = {
   initialTimesheet: WeeklyTimesheetRecord;
+  assignedProjects: ConsultantAssignedProject[];
   initialError: string | null;
 };
 
@@ -185,6 +194,7 @@ function formatDate(date: string): string {
 
 export function ConsultantTimesheetClient({
   initialTimesheet,
+  assignedProjects,
   initialError,
 }: ConsultantTimesheetClientProps) {
   const router = useRouter();
@@ -219,7 +229,23 @@ export function ConsultantTimesheetClient({
     [timesheet.entries],
   );
 
+  const assignedProjectCodes = useMemo(
+    () => new Set(assignedProjects.map((project) => normalizeProjectCode(project.code))),
+    [assignedProjects],
+  );
+
+  const hasAssignedProjects = assignedProjects.length > 0;
+  const selectedProjectIsAssigned = assignedProjectCodes.has(selectedProjectCode);
+
   const hasProjectCodeValidationError = selectedProjectCode.length === 0;
+  const hasUnassignedProjectValidationError =
+    selectedProjectCode.length > 0 && !selectedProjectIsAssigned;
+
+  const isActionBlocked =
+    hasInvalidHours ||
+    hasProjectCodeValidationError ||
+    hasUnassignedProjectValidationError ||
+    !hasAssignedProjects;
 
   function updateEntry(
     index: number,
@@ -387,8 +413,13 @@ export function ConsultantTimesheetClient({
         }
 
         const nextSelectedProjectCode = resolveSelectedProjectCode(result.timesheet);
+        const normalizedNextProjectCode = normalizeProjectCode(nextSelectedProjectCode);
 
-        setSelectedProjectCode(nextSelectedProjectCode);
+        setSelectedProjectCode(
+          assignedProjectCodes.has(normalizedNextProjectCode)
+            ? normalizedNextProjectCode
+            : "",
+        );
         setTimesheet(initializeTimesheet(result.timesheet));
         router.replace(`/consultant/timesheets/${result.timesheet.id}`);
       });
@@ -484,13 +515,28 @@ export function ConsultantTimesheetClient({
             <label className="text-sm font-medium" htmlFor="projectCode">
               Project code
             </label>
-            <Input
-              id="projectCode"
+            <Select
               value={selectedProjectCode}
-              onChange={(event) => updateWeeklyProjectCode(event.target.value)}
-              placeholder="e.g. PROJ-001"
-              disabled={isSubmitted || isPending}
-            />
+              onValueChange={updateWeeklyProjectCode}
+              disabled={isSubmitted || isPending || !hasAssignedProjects}
+            >
+              <SelectTrigger id="projectCode" className="w-full">
+                <SelectValue
+                  placeholder={
+                    hasAssignedProjects
+                      ? "Select assigned project"
+                      : "No assigned projects"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {assignedProjects.map((project) => (
+                  <SelectItem key={project.id} value={normalizeProjectCode(project.code)}>
+                    {normalizeProjectCode(project.code)} - {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Table className="table-fixed">
@@ -803,6 +849,18 @@ export function ConsultantTimesheetClient({
             </p>
           ) : null}
 
+          {!hasAssignedProjects ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              You are not assigned to any active projects. Contact your administrator.
+            </p>
+          ) : null}
+
+          {hasUnassignedProjectValidationError ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              The selected project is not assigned to your account.
+            </p>
+          ) : null}
+
           {successMessage ? (
             <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600">
               {successMessage}
@@ -816,8 +874,7 @@ export function ConsultantTimesheetClient({
               disabled={
                 isPending ||
                 isSubmitted ||
-                hasInvalidHours ||
-                hasProjectCodeValidationError
+                isActionBlocked
               }
             >
               Save Draft
@@ -827,8 +884,7 @@ export function ConsultantTimesheetClient({
               disabled={
                 isPending ||
                 isSubmitted ||
-                hasInvalidHours ||
-                hasProjectCodeValidationError ||
+                isActionBlocked ||
                 totalHours <= 0
               }
             >

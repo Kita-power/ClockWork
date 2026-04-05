@@ -16,13 +16,15 @@ export default async function ConsultantTimesheetDetailPage({
 
   try {
     const routeParams = await params;
-    const timesheet = await consultantService.getWeeklyTimesheetById(
-      routeParams.timesheetId,
-    );
+    const [timesheet, assignedProjects] = await Promise.all([
+      consultantService.getWeeklyTimesheetById(routeParams.timesheetId),
+      consultantService.listAssignedProjectsForCurrentConsultant(),
+    ]);
 
     return (
       <ConsultantTimesheetClient
         initialTimesheet={timesheet}
+        assignedProjects={assignedProjects}
         initialError={null}
       />
     );
@@ -34,10 +36,14 @@ export default async function ConsultantTimesheetDetailPage({
       notFound();
     }
 
-    const fallback = await consultantService.getWeeklyTimesheet();
+    const [fallback, assignedProjects] = await Promise.all([
+      consultantService.getWeeklyTimesheet(),
+      consultantService.listAssignedProjectsForCurrentConsultant(),
+    ]);
     return (
       <ConsultantTimesheetClient
         initialTimesheet={fallback}
+        assignedProjects={assignedProjects}
         initialError={message}
       />
     );

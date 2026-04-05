@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
+import { createClient } from "@/lib/supabase/server";
 
 export type TimesheetStatus = "draft" | "submitted";
 
@@ -42,6 +43,12 @@ export type SaveTimesheetInput = {
   id?: string;
   weekStart: string;
   entries: WeeklyTimesheetEntry[];
+};
+
+export type ConsultantAssignedProject = {
+  id: string;
+  code: string;
+  name: string;
 };
 
 type StoredWeeklyTimesheetRecord = WeeklyTimesheetRecord & {
@@ -352,6 +359,60 @@ function validateTimesheetEntries(entries: WeeklyTimesheetEntry[]): void {
 export const consultantService = {
   description:
     "Handles consultant workflows such as draft, submit, and resubmit timesheets.",
+
+  async listAssignedProjectsForCurrentConsultant(): Promise<ConsultantAssignedProject[]> {
+    const supabase = await createClient();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (authError) {
+      throw new Error(authError.message);
+    }
+
+    const consultantId = authData.user?.id;
+    if (!consultantId) {
+      return [];
+    }
+
+    const { data: assignmentRows, error: assignmentError } = await supabase
+      .from("project_assignments")
+      .select("project_id")
+      .eq("consultant_id", consultantId);
+
+    if (assignmentError) {
+      throw new Error(assignmentError.message);
+    }
+
+    const assignedProjectIds = Array.from(
+      new Set(
+        (assignmentRows ?? [])
+          .map((row) => row.project_id)
+          .filter((value): value is string =>
+            typeof value === "string" && value.trim().length > 0,
+          ),
+      ),
+    );
+
+    if (assignedProjectIds.length === 0) {
+      return [];
+    }
+
+    const { data: projects, error: projectsError } = await supabase
+      .from("projects")
+      .select("id, code, name")
+      .in("id", assignedProjectIds)
+      .eq("is_active", true)
+      .order("code", { ascending: true });
+
+    if (projectsError) {
+      throw new Error(projectsError.message);
+    }
+
+    return (projects ?? []).map((project) => ({
+      id: project.id,
+      code: project.code,
+      name: project.name,
+    }));
+  },
 
   async listTimesheets(): Promise<TimesheetSummaryRecord[]> {
     const records = await readTimesheetStore();
