@@ -95,6 +95,7 @@ async function ConsultantPageContent({
                 Filter by month
               </label>
               <Input
+                key={selectedMonth || "all-months"}
                 id="month-filter"
                 name="month"
                 type="month"
