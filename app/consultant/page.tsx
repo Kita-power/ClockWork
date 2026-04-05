@@ -118,6 +118,7 @@ async function ConsultantPageContent({
                 <TableRow>
                   <TableHead>Timesheet ID</TableHead>
                   <TableHead>Week</TableHead>
+                  <TableHead>Project Code</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Total Hours</TableHead>
                   <TableHead>Last Updated</TableHead>
@@ -127,7 +128,7 @@ async function ConsultantPageContent({
               <TableBody>
                 {filteredTimesheets.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">
                       No timesheets found for this month.
                     </TableCell>
                   </TableRow>
@@ -137,6 +138,9 @@ async function ConsultantPageContent({
                       <TableCell className="font-mono text-xs">{timesheet.id}</TableCell>
                       <TableCell>
                         {formatDate(timesheet.weekStart)} to {formatDate(timesheet.weekEnd)}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {timesheet.projectCode || "-"}
                       </TableCell>
                       <TableCell>
                         <Badge variant={timesheet.status === "submitted" ? "secondary" : "outline"}>

@@ -33,6 +33,7 @@ export type TimesheetSummaryRecord = {
   weekStart: string;
   weekEnd: string;
   status: TimesheetStatus;
+  projectCode: string;
   totalHours: number;
   updatedAt: string;
 };
@@ -52,6 +53,7 @@ export type ConsultantAssignedProject = {
 type SupabaseTimesheetRow = {
   id: string;
   consultant_id: string;
+  project_id: string | null;
   being_processed_by: string | null;
   week_start_date: string;
   week_end_date: string;
@@ -150,6 +152,7 @@ function toTimesheetSummaryFromDb(row: SupabaseTimesheetRow): TimesheetSummaryRe
     weekStart: row.week_start_date,
     weekEnd: row.week_end_date,
     status: normalizeTimesheetStatus(row.status),
+    projectCode: "",
     totalHours: toNumber(row.total_hours),
     updatedAt: row.updated_at ?? row.submitted_at ?? row.created_at ?? new Date().toISOString(),
   };
@@ -204,7 +207,7 @@ async function listTimesheetSummariesForConsultant(
   const { data, error } = await supabase
     .from("timesheets")
     .select(
-      "id, consultant_id, week_start_date, week_end_date, status, total_hours, submitted_at, approved_at, processed_at, being_processed_at, export_completed, created_at, updated_at",
+      "id, consultant_id, project_id, week_start_date, week_end_date, status, total_hours, submitted_at, approved_at, processed_at, being_processed_at, export_completed, created_at, updated_at",
     )
     .eq("consultant_id", consultantId)
     .order("week_start_date", { ascending: false });
@@ -213,7 +216,17 @@ async function listTimesheetSummariesForConsultant(
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row) => toTimesheetSummaryFromDb(row as SupabaseTimesheetRow));
+  const rows = (data ?? []) as SupabaseTimesheetRow[];
+  const projectIds = Array.from(
+    new Set(rows.map((row) => row.project_id).filter((value): value is string => Boolean(value))),
+  );
+
+  const projectCodeById = projectIds.length > 0 ? await fetchProjectCodesByIds(projectIds) : new Map<string, string>();
+
+  return rows.map((row) => ({
+    ...toTimesheetSummaryFromDb(row),
+    projectCode: row.project_id ? projectCodeById.get(row.project_id) ?? "" : "",
+  }));
 }
 
 async function listAssignedProjectsForConsultantId(
