@@ -48,6 +48,10 @@ import {
   appendNotification,
   createTimesheetSubmittedNotification,
 } from "@/lib/notification-center";
+import {
+  formatConsultantTimesheetStatusLabel,
+  getConsultantTimesheetDisplayStatus,
+} from "@/lib/consultant-timesheet-status";
 import type {
   ConsultantAssignedProject,
   WeeklyTimesheetEntry,
@@ -356,12 +360,8 @@ export function ConsultantTimesheetClient({
 
   const isSubmitted =
     timesheet.status === "submitted" || timesheet.status === "submitted_late";
-  const statusLabel =
-    timesheet.status === "submitted_late"
-      ? "Submitted Late"
-      : timesheet.status === "submitted"
-        ? "Submitted"
-        : "Draft";
+  const displayStatus = getConsultantTimesheetDisplayStatus(timesheet.status, timesheet.weekStart);
+  const statusLabel = formatConsultantTimesheetStatusLabel(timesheet.status, timesheet.weekStart);
 
   const totalHours = useMemo(
     () =>
@@ -904,7 +904,15 @@ export function ConsultantTimesheetClient({
                 </DialogContent>
               </Dialog>
             ) : null}
-            <Badge variant={isSubmitted ? "secondary" : "outline"}>
+            <Badge
+              variant={
+                displayStatus === "overdue"
+                  ? "destructive"
+                  : isSubmitted
+                    ? "secondary"
+                    : "outline"
+              }
+            >
               {statusLabel}
             </Badge>
           </div>

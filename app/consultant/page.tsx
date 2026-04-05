@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { consultantService } from "@/services";
+import { formatConsultantTimesheetStatusLabel, getConsultantTimesheetDisplayStatus } from "@/lib/consultant-timesheet-status";
 import { CreateTimesheetButton } from "./create-timesheet-button";
 import { DeleteDraftButton } from "./delete-draft-button";
 
@@ -144,12 +145,18 @@ async function ConsultantPageContent({
                         {timesheet.projectCode || "-"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={timesheet.status === "draft" ? "outline" : "secondary"}>
-                          {timesheet.status === "submitted_late"
-                            ? "Submitted Late"
-                            : timesheet.status === "submitted"
-                              ? "Submitted"
-                              : "Draft"}
+                        <Badge
+                          variant={
+                            getConsultantTimesheetDisplayStatus(timesheet.status, timesheet.weekStart) ===
+                            "draft"
+                              ? "outline"
+                              : getConsultantTimesheetDisplayStatus(timesheet.status, timesheet.weekStart) ===
+                                  "overdue"
+                                ? "destructive"
+                                : "secondary"
+                          }
+                        >
+                          {formatConsultantTimesheetStatusLabel(timesheet.status, timesheet.weekStart)}
                         </Badge>
                       </TableCell>
                       <TableCell>{timesheet.totalHours.toFixed(2)}</TableCell>
