@@ -1,8 +1,6 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { promises as fs } from "node:fs";
-import { join } from "node:path";
 import { createClient } from "@/lib/supabase/server";
 
 export type TimesheetStatus = "draft" | "submitted";
@@ -83,17 +81,6 @@ type SupabaseProjectRow = {
   name: string;
 };
 
-type StoredWeeklyTimesheetRecord = WeeklyTimesheetRecord & {
-  id: string;
-  updatedAt: string;
-};
-
-const MOCK_DATA_DIRECTORY = join(process.cwd(), ".mock-data");
-const MOCK_TIMESHEET_STORE_PATH = join(
-  MOCK_DATA_DIRECTORY,
-  "consultant-timesheets.json",
-);
-
 function normalizeProjectCode(projectCode: string): string {
   return projectCode.trim().toUpperCase();
 }
@@ -139,17 +126,6 @@ function toNumber(value: number | string | null | undefined): number {
 
 function sumEntriesHours(entries: WeeklyTimesheetEntry[]): number {
   return entries.reduce((sum, entry) => sum + (Number.isFinite(entry.hours) ? entry.hours : 0), 0);
-}
-
-function toTimesheetSummaryFromRecord(record: StoredWeeklyTimesheetRecord): TimesheetSummaryRecord {
-  return {
-    id: record.id,
-    weekStart: record.weekStart,
-    weekEnd: record.weekEnd,
-    status: record.status,
-    totalHours: toNumber(sumEntriesHours(record.entries)),
-    updatedAt: record.updatedAt,
-  };
 }
 
 function toTimesheetSummaryFromDb(row: SupabaseTimesheetRow): TimesheetSummaryRecord {
@@ -355,15 +331,6 @@ function normalizeSubmittedEntries(
     }));
 }
 
-async function deleteLocalDraftTimesheet(timesheetId: string): Promise<void> {
-  const records = await readTimesheetStore();
-  const nextRecords = records.filter((record) => record.id !== timesheetId);
-
-  if (nextRecords.length !== records.length) {
-    await writeTimesheetStore(nextRecords);
-  }
-}
-
 function resolveWeekStart(inputWeekStart?: string): Date {
   if (inputWeekStart) {
     return parseIsoDate(inputWeekStart);
@@ -405,183 +372,19 @@ function buildWeekEntries(
   });
 }
 
-function cloneEntries(entries: WeeklyTimesheetEntry[]): WeeklyTimesheetEntry[] {
-  return entries.map((entry) => ({ ...entry }));
-}
-
-function buildStoredTimesheet(
-  weekStart: string,
-  input?: {
-    id?: string;
-    status?: TimesheetStatus;
-    entries?: WeeklyTimesheetEntry[];
-    projectCode?: string;
-    updatedAt?: string;
-  },
-): StoredWeeklyTimesheetRecord {
+function buildDraftTimesheet(
+  weekStart?: string,
+  id: string = buildTimesheetId(),
+): WeeklyTimesheetRecord {
   const startDate = resolveWeekStart(weekStart);
   const normalizedWeekStart = toIsoDate(startDate);
-  const endDate = addDays(startDate, 6);
-
   return {
-    id: input?.id ?? buildTimesheetId(),
+    id,
     weekStart: normalizedWeekStart,
-    weekEnd: toIsoDate(endDate),
-    status: input?.status ?? "draft",
-    entries: cloneEntries(
-      input?.entries ??
-        buildWeekEntries(normalizedWeekStart, input?.projectCode),
-    ),
-    updatedAt: input?.updatedAt ?? new Date().toISOString(),
-  };
-}
-
-function toSummary(record: StoredWeeklyTimesheetRecord): TimesheetSummaryRecord {
-  const totalHours = record.entries.reduce((sum, entry) => {
-    const value = Number.isFinite(entry.hours) ? entry.hours : 0;
-    return sum + value;
-  }, 0);
-
-  return {
-    id: record.id,
-    weekStart: record.weekStart,
-    weekEnd: record.weekEnd,
-    status: record.status,
-    totalHours,
-    updatedAt: record.updatedAt,
-  };
-}
-
-function toWeeklyRecord(record: StoredWeeklyTimesheetRecord): WeeklyTimesheetRecord {
-  return {
-    id: record.id,
-    weekStart: record.weekStart,
-    weekEnd: record.weekEnd,
-    status: record.status,
-    entries: cloneEntries(record.entries),
-  };
-}
-
-function normalizeStoredRecords(
-  records: StoredWeeklyTimesheetRecord[],
-): StoredWeeklyTimesheetRecord[] {
-  const seenIds = new Set<string>();
-
-  return records.map((record) => {
-    const normalizedId =
-      typeof record.id === "string" &&
-      record.id.trim().length > 0 &&
-      !seenIds.has(record.id)
-        ? record.id
-        : buildTimesheetId();
-
-    seenIds.add(normalizedId);
-
-    return {
-      ...record,
-      id: normalizedId,
-    };
-  });
-}
-
-function seedTimesheetStore(): StoredWeeklyTimesheetRecord[] {
-  const currentWeekStart = resolveWeekStart();
-  const previousWeekStart = addDays(currentWeekStart, -7);
-  const twoWeeksAgoStart = addDays(currentWeekStart, -14);
-
-  const currentWeek = buildStoredTimesheet(toIsoDate(currentWeekStart), {
+    weekEnd: toIsoDate(addDays(startDate, 6)),
     status: "draft",
-    entries: buildWeekEntries(toIsoDate(currentWeekStart)).map((entry, index) => {
-      if (index === 0) return { ...entry, projectCode: "PROJ-001", hours: 8, notes: "Planning" };
-      if (index === 1) return { ...entry, projectCode: "PROJ-001", hours: 7.5, notes: "Delivery" };
-      if (index === 2) return { ...entry, projectCode: "PROJ-002", hours: 8, notes: "Client workshop" };
-      if (index === 3) return { ...entry, projectCode: "PROJ-001", hours: 8, notes: "Implementation" };
-      return entry;
-    }),
-  });
-
-  const previousWeek = buildStoredTimesheet(toIsoDate(previousWeekStart), {
-    status: "submitted",
-    entries: buildWeekEntries(toIsoDate(previousWeekStart)).map((entry, index) => {
-      if (index <= 4) return { ...entry, projectCode: "PROJ-003", hours: 8, notes: "Project execution" };
-      return entry;
-    }),
-    updatedAt: addDays(new Date(), -4).toISOString(),
-  });
-
-  const twoWeeksAgo = buildStoredTimesheet(toIsoDate(twoWeeksAgoStart), {
-    status: "submitted",
-    entries: buildWeekEntries(toIsoDate(twoWeeksAgoStart)).map((entry, index) => {
-      if (index === 0) return { ...entry, projectCode: "PROJ-004", hours: 8, notes: "Discovery" };
-      if (index === 1) return { ...entry, projectCode: "PROJ-004", hours: 7.75, notes: "Scoping" };
-      if (index === 2) return { ...entry, projectCode: "PROJ-004", hours: 8, notes: "Workshop" };
-      if (index === 3) return { ...entry, projectCode: "PROJ-004", hours: 7, notes: "Implementation" };
-      if (index === 4) return { ...entry, projectCode: "PROJ-004", hours: 8, notes: "QA" };
-      return entry;
-    }),
-    updatedAt: addDays(new Date(), -11).toISOString(),
-  });
-
-  return [currentWeek, previousWeek, twoWeeksAgo];
-}
-
-async function ensureMockTimesheetStoreFile(): Promise<void> {
-  try {
-    await fs.access(MOCK_TIMESHEET_STORE_PATH);
-  } catch {
-    await fs.mkdir(MOCK_DATA_DIRECTORY, { recursive: true });
-    await fs.writeFile(
-      MOCK_TIMESHEET_STORE_PATH,
-      JSON.stringify(seedTimesheetStore(), null, 2),
-      "utf8",
-    );
-  }
-}
-
-async function readTimesheetStore(): Promise<StoredWeeklyTimesheetRecord[]> {
-  await ensureMockTimesheetStoreFile();
-  const content = await fs.readFile(MOCK_TIMESHEET_STORE_PATH, "utf8");
-
-  try {
-    const parsed = JSON.parse(content);
-    if (!Array.isArray(parsed)) {
-      return seedTimesheetStore();
-    }
-
-    const normalized = normalizeStoredRecords(parsed as StoredWeeklyTimesheetRecord[]);
-    const shouldRewriteStore = normalized.some((record, index) => record.id !== parsed[index]?.id);
-
-    if (shouldRewriteStore) {
-      await writeTimesheetStore(normalized);
-    }
-
-    return normalized;
-  } catch {
-    return seedTimesheetStore();
-  }
-}
-
-async function writeTimesheetStore(
-  records: StoredWeeklyTimesheetRecord[],
-): Promise<void> {
-  await ensureMockTimesheetStoreFile();
-  await fs.writeFile(
-    MOCK_TIMESHEET_STORE_PATH,
-    JSON.stringify(records, null, 2),
-    "utf8",
-  );
-}
-
-function upsertTimesheet(
-  records: StoredWeeklyTimesheetRecord[],
-  record: StoredWeeklyTimesheetRecord,
-): void {
-  const index = records.findIndex((item) => item.weekStart === record.weekStart);
-  if (index >= 0) {
-    records[index] = record;
-    return;
-  }
-  records.push(record);
+    entries: buildWeekEntries(normalizedWeekStart),
+  };
 }
 
 function validateTimesheetEntries(entries: WeeklyTimesheetEntry[]): void {
@@ -647,62 +450,21 @@ export const consultantService = {
   async listTimesheets(): Promise<TimesheetSummaryRecord[]> {
     const consultantId = await getAuthenticatedConsultantId();
 
-    const [draftRecords, submittedSummaries] = await Promise.all([
-      readTimesheetStore(),
-      consultantId ? listSubmittedTimesheetSummariesForConsultant(consultantId) : Promise.resolve([]),
-    ]);
+    if (!consultantId) {
+      return [];
+    }
 
-    const combined = new Map<string, TimesheetSummaryRecord>();
-
-    draftRecords
-      .map(toTimesheetSummaryFromRecord)
-      .forEach((record) => combined.set(record.weekStart, record));
-
-    submittedSummaries.forEach((record) => combined.set(record.weekStart, record));
-
-    return Array.from(combined.values()).sort((left, right) => right.weekStart.localeCompare(left.weekStart));
+    return listSubmittedTimesheetSummariesForConsultant(consultantId);
   },
 
   async createNewWeeklyTimesheet(): Promise<WeeklyTimesheetRecord> {
-    const consultantId = await getAuthenticatedConsultantId();
-    const records = await readTimesheetStore();
-    const submittedWeekStarts = consultantId
-      ? (await listSubmittedTimesheetSummariesForConsultant(consultantId)).map((record) => record.weekStart)
-      : [];
-
-    const existingWeekStarts = new Set(
-      records.map((record) => record.weekStart),
-    );
-
-    submittedWeekStarts.forEach((weekStart) => existingWeekStarts.add(weekStart));
-
-    let candidateWeekStartDate = resolveWeekStart();
-    while (existingWeekStarts.has(toIsoDate(candidateWeekStartDate))) {
-      candidateWeekStartDate = addDays(candidateWeekStartDate, 7);
-    }
-
-    const created = buildStoredTimesheet(toIsoDate(candidateWeekStartDate), {
-      status: "draft",
-    });
-    upsertTimesheet(records, created);
-    await writeTimesheetStore(records);
-
-    return toWeeklyRecord(created);
+    return buildDraftTimesheet();
   },
 
   async getWeeklyTimesheet(weekStart?: string): Promise<WeeklyTimesheetRecord> {
     const consultantId = await getAuthenticatedConsultantId();
-    const records = await readTimesheetStore();
     const startDate = resolveWeekStart(weekStart);
     const normalizedWeekStart = toIsoDate(startDate);
-
-    const existingRecord = records.find(
-      (record) => record.weekStart === normalizedWeekStart,
-    );
-
-    if (existingRecord) {
-      return toWeeklyRecord(existingRecord);
-    }
 
     if (consultantId) {
       const submittedRecord = await findSubmittedTimesheetByWeekStart(
@@ -719,18 +481,16 @@ export const consultantService = {
       }
     }
 
-    const fallback = buildStoredTimesheet(normalizedWeekStart, {
-      status: "draft",
-    });
-
-    return toWeeklyRecord(fallback);
+    return buildDraftTimesheet(normalizedWeekStart);
   },
 
   async getWeeklyTimesheetById(timesheetId: string): Promise<WeeklyTimesheetRecord> {
-    const consultantId = await getAuthenticatedConsultantId();
-    const records = await readTimesheetStore();
-    const record = records.find((item) => item.id === timesheetId);
-    if (!record) {
+    // Draft IDs start with "ts-"; skip database lookup for drafts
+    const isDraftId = timesheetId.startsWith("ts-");
+
+    if (!isDraftId) {
+      const consultantId = await getAuthenticatedConsultantId();
+
       if (consultantId) {
         const submittedRecord = await findSubmittedTimesheetById(consultantId, timesheetId);
         if (submittedRecord) {
@@ -741,26 +501,16 @@ export const consultantService = {
           return toWeeklyRecordFromDb(submittedRecord, entries, projectCodeById);
         }
       }
-
-      throw new Error("Timesheet not found");
     }
 
-    return toWeeklyRecord(record);
+    return buildDraftTimesheet(undefined, timesheetId);
   },
 
   async saveWeeklyTimesheetDraft(input: SaveTimesheetInput): Promise<{ savedAt: string }> {
     validateTimesheetEntries(input.entries);
     const consultantId = await getAuthenticatedConsultantId();
-    const records = await readTimesheetStore();
     const startDate = resolveWeekStart(input.weekStart);
     const normalizedWeekStart = toIsoDate(startDate);
-    const existingRecord = input.id
-      ? records.find((record) => record.id === input.id)
-      : records.find((record) => record.weekStart === normalizedWeekStart);
-
-    if (input.id && !existingRecord) {
-      throw new Error("Timesheet not found");
-    }
 
     if (consultantId) {
       const submittedRecord = await findSubmittedTimesheetByWeekStart(
@@ -774,15 +524,6 @@ export const consultantService = {
     }
 
     const savedAt = new Date().toISOString();
-    const savedRecord = buildStoredTimesheet(normalizedWeekStart, {
-      id: existingRecord?.id,
-      status: "draft",
-      entries: input.entries,
-      updatedAt: savedAt,
-    });
-
-    upsertTimesheet(records, savedRecord);
-    await writeTimesheetStore(records);
 
     return { savedAt };
   },
@@ -806,16 +547,8 @@ export const consultantService = {
       throw new Error("The selected project is not assigned to your account.");
     }
 
-    const records = await readTimesheetStore();
     const startDate = resolveWeekStart(input.weekStart);
     const normalizedWeekStart = toIsoDate(startDate);
-    const existingRecord = input.id
-      ? records.find((record) => record.id === input.id)
-      : records.find((record) => record.weekStart === normalizedWeekStart);
-
-    if (input.id && !existingRecord) {
-      throw new Error("Timesheet not found");
-    }
 
     const submittedRecord = await findSubmittedTimesheetByWeekStart(
       consultantId,
@@ -871,24 +604,10 @@ export const consultantService = {
       throw new Error(entriesInsertError.message);
     }
 
-    await deleteLocalDraftTimesheet(existingRecord?.id ?? input.id ?? "");
-
     return { submittedAt, timesheetId };
   },
 
   async deleteDraftTimesheet(timesheetId: string): Promise<void> {
-    const records = await readTimesheetStore();
-    const index = records.findIndex((record) => record.id === timesheetId);
-
-    if (index < 0) {
-      throw new Error("Timesheet not found");
-    }
-
-    if (records[index].status !== "draft") {
-      throw new Error("Only draft timesheets can be deleted.");
-    }
-
-    records.splice(index, 1);
-    await writeTimesheetStore(records);
+    return;
   },
 };
