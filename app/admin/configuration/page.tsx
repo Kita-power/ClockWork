@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import {
   DEADLINE_DAY_OPTIONS,
   DEADLINE_TIME_OPTIONS,
@@ -34,6 +35,7 @@ export default function AdminConfigurationPage() {
     DEFAULT_ADMIN_CONSULTANT_DEADLINE_CONFIG.reminderSchedule,
   );
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [isSaveMessageVisible, setIsSaveMessageVisible] = useState(false);
 
   useEffect(() => {
     const savedConfig = loadAdminConsultantDeadlineConfig();
@@ -41,6 +43,28 @@ export default function AdminConfigurationPage() {
     setTimeOfDay(savedConfig.timeOfDay);
     setReminderSchedule(savedConfig.reminderSchedule);
   }, []);
+
+  useEffect(() => {
+    if (!saveMessage) {
+      setIsSaveMessageVisible(false);
+      return;
+    }
+
+    setIsSaveMessageVisible(true);
+
+    const hideTimer = window.setTimeout(() => {
+      setIsSaveMessageVisible(false);
+    }, 3000);
+
+    const clearTimer = window.setTimeout(() => {
+      setSaveMessage(null);
+    }, 3500);
+
+    return () => {
+      window.clearTimeout(hideTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [saveMessage]);
 
   function handleSaveConfiguration(): void {
     saveAdminConsultantDeadlineConfig({
@@ -147,9 +171,18 @@ export default function AdminConfigurationPage() {
         </div>
 
         {saveMessage ? (
-          <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
-            {saveMessage}
-          </p>
+          <div
+            className={cn(
+              "overflow-hidden transition-all duration-500 ease-out",
+              isSaveMessageVisible
+                ? "max-h-20 opacity-100 translate-y-0"
+                : "max-h-0 opacity-0 -translate-y-1",
+            )}
+          >
+            <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+              {saveMessage}
+            </p>
+          </div>
         ) : null}
 
         <Button
