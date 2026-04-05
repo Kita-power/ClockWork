@@ -110,6 +110,19 @@ function buildTimesheetId(weekStart?: string): string {
   return `ts_${randomUUID()}`;
 }
 
+function getDatabaseTimesheetId(timesheetId?: string): string | undefined {
+  if (!timesheetId) {
+    return undefined;
+  }
+
+  if (!timesheetId.startsWith("ts_")) {
+    return timesheetId;
+  }
+
+  const match = timesheetId.match(/^ts_[\d-]+_(.+)$/);
+  return match?.[1] ?? undefined;
+}
+
 function buildDatabaseTimesheetId(): string {
   return randomUUID();
 }
@@ -592,13 +605,12 @@ export const consultantService = {
       throw new Error("A timesheet for this week with the same project code has already been submitted.");
     }
 
-    const providedTimesheetId =
-      input.id && !input.id.startsWith("ts_") ? input.id : undefined;
+    const providedTimesheetId = getDatabaseTimesheetId(input.id);
     const existingDraft = providedTimesheetId
       ? await findDraftTimesheetById(consultantId, providedTimesheetId)
-      : await findDraftTimesheetByWeekStart(consultantId, normalizedWeekStart);
+      : null;
 
-    const timesheetId = existingDraft?.id ?? buildDatabaseTimesheetId();
+    const timesheetId = existingDraft?.id ?? providedTimesheetId ?? buildDatabaseTimesheetId();
 
     const savedAt = new Date().toISOString();
     const draftPayload = {
@@ -707,12 +719,11 @@ export const consultantService = {
     }
 
     const submittedAt = new Date().toISOString();
-    const providedTimesheetId =
-      input.id && !input.id.startsWith("ts_") ? input.id : undefined;
+    const providedTimesheetId = getDatabaseTimesheetId(input.id);
     const existingDraft = providedTimesheetId
       ? await findDraftTimesheetById(consultantId, providedTimesheetId)
       : null;
-    const timesheetId = existingDraft?.id ?? buildDatabaseTimesheetId();
+    const timesheetId = existingDraft?.id ?? providedTimesheetId ?? buildDatabaseTimesheetId();
     const preparedEntries = normalizeSubmittedEntries(input.entries);
 
     const timesheetPayload = {
