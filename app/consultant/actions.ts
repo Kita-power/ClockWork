@@ -35,6 +35,17 @@ export async function loadConsultantWeeklyTimesheetAction(
   }
 }
 
+export async function loadConsultantWeeklyDraftTimesheetAction(
+  weekStart?: string,
+): Promise<LoadTimesheetResult> {
+  try {
+    const timesheet = await consultantService.getWeeklyDraftTimesheet(weekStart);
+    return { ok: true, timesheet };
+  } catch (error) {
+    return { ok: false, error: getErrorMessage(error) };
+  }
+}
+
 export async function saveConsultantTimesheetDraftAction(
   input: SaveTimesheetInput,
 ): Promise<ActionResult> {

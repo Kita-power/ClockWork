@@ -468,6 +468,12 @@ export const consultantService = {
     return buildDraftTimesheet();
   },
 
+  async getWeeklyDraftTimesheet(weekStart?: string): Promise<WeeklyTimesheetRecord> {
+    const startDate = resolveWeekStart(weekStart);
+    const normalizedWeekStart = toIsoDate(startDate);
+    return buildDraftTimesheet(normalizedWeekStart);
+  },
+
   async getWeeklyTimesheet(weekStart?: string): Promise<WeeklyTimesheetRecord> {
     const consultantId = await getAuthenticatedConsultantId();
     const startDate = resolveWeekStart(weekStart);
@@ -504,18 +510,20 @@ export const consultantService = {
 
     const consultantId = await getAuthenticatedConsultantId();
 
-    if (consultantId) {
-      const submittedRecord = await findSubmittedTimesheetById(consultantId, timesheetId);
-      if (submittedRecord) {
-        const entries = await fetchSubmittedTimesheetEntries(submittedRecord.id);
-        const projectIds = Array.from(new Set(entries.map((entry) => entry.project_id)));
-        const projectCodeById = await fetchProjectCodesByIds(projectIds);
-
-        return toWeeklyRecordFromDb(submittedRecord, entries, projectCodeById);
-      }
+    if (!consultantId) {
+      throw new Error("Timesheet not found");
     }
 
-    return buildDraftTimesheet(undefined, timesheetId);
+    const submittedRecord = await findSubmittedTimesheetById(consultantId, timesheetId);
+    if (submittedRecord) {
+      const entries = await fetchSubmittedTimesheetEntries(submittedRecord.id);
+      const projectIds = Array.from(new Set(entries.map((entry) => entry.project_id)));
+      const projectCodeById = await fetchProjectCodesByIds(projectIds);
+
+      return toWeeklyRecordFromDb(submittedRecord, entries, projectCodeById);
+    }
+
+    throw new Error("Timesheet not found");
   },
 
   async saveWeeklyTimesheetDraft(input: SaveTimesheetInput): Promise<{ savedAt: string }> {

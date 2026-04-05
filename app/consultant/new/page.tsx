@@ -21,7 +21,7 @@ export default async function ConsultantNewTimesheetPage({
 
   if (shouldCreate) {
     const created = await consultantService.createNewWeeklyTimesheet();
-    redirect(`/consultant/timesheets/${created.id}`);
+    redirect(`/consultant/new?timesheetId=${created.id}`);
   }
 
   try {
@@ -39,6 +39,8 @@ export default async function ConsultantNewTimesheetPage({
         initialTimesheet={timesheet}
         assignedProjects={assignedProjects}
         initialError={null}
+        loadSubmittedOnWeekChange={false}
+        useNewRouteForDrafts={true}
       />
     );
   } catch (error) {
@@ -54,6 +56,8 @@ export default async function ConsultantNewTimesheetPage({
         initialTimesheet={fallback}
         assignedProjects={assignedProjects}
         initialError={message}
+        loadSubmittedOnWeekChange={false}
+        useNewRouteForDrafts={true}
       />
     );
   }

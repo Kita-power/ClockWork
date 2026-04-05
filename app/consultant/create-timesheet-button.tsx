@@ -24,7 +24,7 @@ export function CreateTimesheetButton() {
                 return;
               }
 
-              router.push(`/consultant/timesheets/${result.timesheetId}`);
+              router.push(`/consultant/new?timesheetId=${result.timesheetId}`);
             });
           });
         }}

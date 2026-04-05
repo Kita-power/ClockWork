@@ -29,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  loadConsultantWeeklyDraftTimesheetAction,
   loadConsultantWeeklyTimesheetAction,
   saveConsultantTimesheetDraftAction,
   submitConsultantTimesheetAction,
@@ -45,6 +46,8 @@ type ConsultantTimesheetClientProps = {
   initialTimesheet: WeeklyTimesheetRecord;
   assignedProjects: ConsultantAssignedProject[];
   initialError: string | null;
+  loadSubmittedOnWeekChange?: boolean;
+  useNewRouteForDrafts?: boolean;
 };
 
 type PendingTaskDraft = {
@@ -233,6 +236,8 @@ export function ConsultantTimesheetClient({
   initialTimesheet,
   assignedProjects,
   initialError,
+  loadSubmittedOnWeekChange = true,
+  useNewRouteForDrafts = false,
 }: ConsultantTimesheetClientProps) {
   const router = useRouter();
   const [timesheet, setTimesheet] = useState(() =>
@@ -442,13 +447,19 @@ export function ConsultantTimesheetClient({
   }
 
   function loadWeek(weekStart: string): void {
+    if (isSubmitted) return;
+
     setErrorMessage(null);
     setSuccessMessage(null);
     setExpandedEntryIndex(null);
     setPendingTaskDraftByEntry({});
 
     startTransition(() => {
-      loadConsultantWeeklyTimesheetAction(weekStart).then((result) => {
+      const loadAction = loadSubmittedOnWeekChange
+        ? loadConsultantWeeklyTimesheetAction
+        : loadConsultantWeeklyDraftTimesheetAction;
+
+      loadAction(weekStart).then((result) => {
         if (!result.ok) {
           setErrorMessage(result.error);
           return;
@@ -463,7 +474,11 @@ export function ConsultantTimesheetClient({
             : "",
         );
         setTimesheet(initializeTimesheet(result.timesheet));
-        router.replace(`/consultant/timesheets/${result.timesheet.id}`);
+        router.replace(
+          useNewRouteForDrafts
+            ? `/consultant/new?timesheetId=${result.timesheet.id}`
+            : `/consultant/timesheets/${result.timesheet.id}`,
+        );
       });
     });
   }
@@ -495,7 +510,11 @@ export function ConsultantTimesheetClient({
         }
 
         setSuccessMessage(result.message);
-        router.replace(`/consultant/timesheets/${timesheet.id}`);
+        router.replace(
+          useNewRouteForDrafts
+            ? `/consultant/new?timesheetId=${timesheet.id}`
+            : `/consultant/timesheets/${timesheet.id}`,
+        );
         router.refresh();
       });
     });
@@ -547,7 +566,7 @@ export function ConsultantTimesheetClient({
             <Select
               value={timesheet.weekStart}
               onValueChange={loadWeek}
-              disabled={isPending}
+              disabled={isSubmitted || isPending}
             >
               <SelectTrigger id="weekStart" className="w-full">
                 <SelectValue placeholder="Select Monday" />
