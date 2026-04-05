@@ -44,6 +44,10 @@ import {
   submitConsultantTimesheetAction,
 } from "./actions";
 import { cn } from "@/lib/utils";
+import {
+  appendNotification,
+  createTimesheetSubmittedNotification,
+} from "@/lib/notification-center";
 import type {
   ConsultantAssignedProject,
   WeeklyTimesheetEntry,
@@ -849,6 +853,14 @@ export function ConsultantTimesheetClient({
         markCurrentSnapshotAsSaved();
         setTimesheet((prev) => ({ ...prev, status: result.status ?? "submitted" }));
         setSuccessMessage(result.message);
+        appendNotification(
+          createTimesheetSubmittedNotification({
+            projectCode: selectedProjectCode,
+            weekStart: timesheet.weekStart,
+            weekEnd: timesheet.weekEnd,
+            isLate: result.status === "submitted_late",
+          }),
+        );
         router.replace(`/consultant/timesheets/${result.timesheetId ?? timesheet.id}`);
         router.refresh();
       });

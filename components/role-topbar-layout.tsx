@@ -11,6 +11,33 @@ import { NotificationButton } from "@/components/ui/notif-button";
 import type { Notification } from "@/components/ui/notif-button";
 import { useUser } from "@/hooks/use-user";
 import { formatRoleLabel } from "@/lib/format-role-label";
+import {
+  loadNotifications,
+  NOTIFICATION_EVENT_NAME,
+  saveNotifications,
+  type NotificationEventDetail,
+  type StoredNotification,
+} from "@/lib/notification-center";
+
+function toUiNotification(notification: StoredNotification): Notification {
+  return {
+    ...notification,
+    timestamp: new Date(notification.timestamp),
+  };
+}
+
+function toStoredNotification(notification: Notification): StoredNotification {
+  return {
+    id: notification.id,
+    title: notification.title,
+    description: notification.description,
+    timestamp:
+      notification.timestamp instanceof Date
+        ? notification.timestamp.toISOString()
+        : new Date().toISOString(),
+    read: notification.read ?? false,
+  };
+}
 
 type RoleTopbarLayoutProps = {
   subtitle: string;
@@ -32,25 +59,42 @@ export function RoleTopbarLayout({
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
-    setNotifications([
-      {
-        id: "1",
-        title: "Timesheet Submitted",
-        description: "Your weekly timesheet has been successfully submitted",
-        timestamp: new Date(Date.now() - 2 * 3600000),
-        read: false,
-      },
-    ]);
+    setNotifications(loadNotifications().map(toUiNotification));
+  }, []);
+
+  useEffect(() => {
+    const handleNotificationAdded = (event: Event) => {
+      const customEvent = event as CustomEvent<NotificationEventDetail>;
+      setNotifications((prev) => [toUiNotification(customEvent.detail), ...prev]);
+    };
+
+    const handleStorageSync = () => {
+      setNotifications(loadNotifications().map(toUiNotification));
+    };
+
+    window.addEventListener(NOTIFICATION_EVENT_NAME, handleNotificationAdded);
+    window.addEventListener("storage", handleStorageSync);
+
+    return () => {
+      window.removeEventListener(NOTIFICATION_EVENT_NAME, handleNotificationAdded);
+      window.removeEventListener("storage", handleStorageSync);
+    };
   }, []);
 
   const handleCloseNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    setNotifications((prev) => {
+      const next = prev.filter((n) => n.id !== id);
+      saveNotifications(next.map(toStoredNotification));
+      return next;
+    });
   };
 
   const handleMarkAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    );
+    setNotifications((prev) => {
+      const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+      saveNotifications(next.map(toStoredNotification));
+      return next;
+    });
   };
 
   return (
