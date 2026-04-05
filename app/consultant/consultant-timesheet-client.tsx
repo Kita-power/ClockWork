@@ -170,6 +170,8 @@ function formatMondayLabel(dateString: string): string {
 
 function buildMondayOptions(anchorWeekStart: string): Array<{ value: string; label: string }> {
   const anchorDate = new Date(`${anchorWeekStart}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   return Array.from({ length: 105 }, (_, index) => {
     const monday = addDays(anchorDate, (index - 52) * 7);
@@ -179,6 +181,9 @@ function buildMondayOptions(anchorWeekStart: string): Array<{ value: string; lab
       value,
       label: formatMondayLabel(value),
     };
+  }).filter((option) => {
+    const optionDate = new Date(`${option.value}T00:00:00`);
+    return optionDate <= today;
   });
 }
 
