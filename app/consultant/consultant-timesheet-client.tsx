@@ -698,7 +698,9 @@ export function ConsultantTimesheetClient({
               <TableRow>
                 <TableHead className="px-2">Day</TableHead>
                 <TableHead className="px-2">Hours</TableHead>
-                <TableHead className="px-2 text-left">Tasks</TableHead>
+                <TableHead className="px-2">
+                  <span className="block text-center pr-20">Tasks</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -721,13 +723,13 @@ export function ConsultantTimesheetClient({
                       </div>
                     </TableCell>
                     <TableCell className="px-2 align-top whitespace-normal">
-                      <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                        <p className="text-xs leading-4 text-muted-foreground whitespace-normal break-words">
+                      <div className="relative w-full py-1">
+                        <p className="text-center text-xs leading-4 text-muted-foreground whitespace-normal break-words pr-20">
                           {(entry.tasks ?? []).length === 0
                             ? "No tasks yet. Add one to break down this day."
                             : `${(entry.tasks ?? []).length} ${(entry.tasks ?? []).length === 1 ? "Task" : "Tasks"}`}
                         </p>
-                        <div className="flex justify-end">
+                        <div className="absolute inset-y-0 right-0 flex items-center justify-end">
                           <Button
                             type="button"
                             variant="ghost"
