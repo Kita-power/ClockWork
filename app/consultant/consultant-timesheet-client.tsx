@@ -291,6 +291,7 @@ export function ConsultantTimesheetClient({
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const isSubmitted = timesheet.status === "submitted";
@@ -574,6 +575,7 @@ export function ConsultantTimesheetClient({
   function submitTimesheet(): void {
     setErrorMessage(null);
     setSuccessMessage(null);
+    setIsSubmitDialogOpen(false);
 
     startTransition(() => {
       submitConsultantTimesheetAction({
@@ -1030,17 +1032,40 @@ export function ConsultantTimesheetClient({
             >
               Save Draft
             </Button>
-            <Button
-              onClick={submitTimesheet}
-              disabled={
-                isPending ||
-                isSubmitted ||
-                isActionBlocked ||
-                totalHours <= 0
-              }
-            >
-              Submit Timesheet
-            </Button>
+            <Dialog open={isSubmitDialogOpen} onOpenChange={setIsSubmitDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  disabled={
+                    isPending ||
+                    isSubmitted ||
+                    isActionBlocked ||
+                    totalHours <= 0
+                  }
+                >
+                  Submit Timesheet
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Submit this timesheet?</DialogTitle>
+                  <DialogDescription>
+                    Once submitted, this timesheet will be locked for edits and routed for review.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsSubmitDialogOpen(false)}
+                    disabled={isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={submitTimesheet} disabled={isPending}>
+                    Yes, submit timesheet
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardContent>
       </Card>
