@@ -1,9 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -13,9 +13,43 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import {
+  DEADLINE_DAY_OPTIONS,
+  DEADLINE_TIME_OPTIONS,
+  DEFAULT_ADMIN_CONSULTANT_DEADLINE_CONFIG,
+  loadAdminConsultantDeadlineConfig,
+  saveAdminConsultantDeadlineConfig,
+  type ReminderOption,
+} from "@/lib/admin-deadline-config";
 
 export default function AdminConfigurationPage() {
   const currentUser = useUser();
+  const [daysFromStartOfWeek, setDaysFromStartOfWeek] = useState<string>(
+    DEFAULT_ADMIN_CONSULTANT_DEADLINE_CONFIG.daysFromStartOfWeek.toString(),
+  );
+  const [timeOfDay, setTimeOfDay] = useState<string>(
+    DEFAULT_ADMIN_CONSULTANT_DEADLINE_CONFIG.timeOfDay,
+  );
+  const [reminderSchedule, setReminderSchedule] = useState<ReminderOption>(
+    DEFAULT_ADMIN_CONSULTANT_DEADLINE_CONFIG.reminderSchedule,
+  );
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedConfig = loadAdminConsultantDeadlineConfig();
+    setDaysFromStartOfWeek(savedConfig.daysFromStartOfWeek.toString());
+    setTimeOfDay(savedConfig.timeOfDay);
+    setReminderSchedule(savedConfig.reminderSchedule);
+  }, []);
+
+  function handleSaveConfiguration(): void {
+    saveAdminConsultantDeadlineConfig({
+      daysFromStartOfWeek: Number(daysFromStartOfWeek) as 7 | 8 | 9 | 10,
+      timeOfDay: timeOfDay as (typeof DEADLINE_TIME_OPTIONS)[number],
+      reminderSchedule,
+    });
+    setSaveMessage("Configuration saved. This deadline is now stored for reuse.");
+  }
 
   return (
     <Card className="mx-auto max-w-4xl">
@@ -41,16 +75,52 @@ export default function AdminConfigurationPage() {
 
         <div className="flex flex-col gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Weekly consultant submission deadline
+            Days from the start of the week
           </p>
-          <Input type="text" defaultValue="Friday, 5:00 PM" />
+          <Select value={daysFromStartOfWeek} onValueChange={setDaysFromStartOfWeek}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select day offset" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {DEADLINE_DAY_OPTIONS.map((dayOffset) => (
+                  <SelectItem key={dayOffset} value={dayOffset.toString()}>
+                    {dayOffset}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Deadline time
+          </p>
+          <Select value={timeOfDay} onValueChange={setTimeOfDay}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a time" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="max-h-56">
+              <SelectGroup>
+                {DEADLINE_TIME_OPTIONS.map((timeOption) => (
+                  <SelectItem key={timeOption} value={timeOption}>
+                    {timeOption}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Reminder schedule
           </p>
-          <Select defaultValue="24h">
+          <Select
+            value={reminderSchedule}
+            onValueChange={(value) => setReminderSchedule(value as ReminderOption)}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -76,7 +146,18 @@ export default function AdminConfigurationPage() {
           </p>
         </div>
 
-        <Button type="button" className="w-full" disabled={!currentUser.isAdmin}>
+        {saveMessage ? (
+          <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700">
+            {saveMessage}
+          </p>
+        ) : null}
+
+        <Button
+          type="button"
+          className="w-full"
+          disabled={!currentUser.isAdmin}
+          onClick={handleSaveConfiguration}
+        >
           Save Configuration
         </Button>
       </CardContent>
