@@ -83,6 +83,11 @@ type SupabaseProjectRow = {
   name: string;
 };
 
+type SerializedTimeEntryNotes = {
+  text: string;
+  tasks: WeeklyTimesheetTask[];
+};
+
 function normalizeProjectCode(projectCode: string): string {
   return projectCode.trim().toUpperCase();
 }
@@ -146,6 +151,72 @@ function sumEntriesHours(entries: WeeklyTimesheetEntry[]): number {
   return entries.reduce((sum, entry) => sum + (Number.isFinite(entry.hours) ? entry.hours : 0), 0);
 }
 
+function sumTaskHours(tasks: WeeklyTimesheetTask[]): number {
+  return tasks.reduce((sum, task) => sum + (Number.isFinite(task.hours) ? task.hours : 0), 0);
+}
+
+function normalizeTaskForPersistence(
+  task: WeeklyTimesheetTask,
+  taskIndex: number,
+  entryDate: string,
+): WeeklyTimesheetTask {
+  return {
+    id: task.id.trim().length > 0 ? task.id : `${entryDate}-${taskIndex + 1}`,
+    title: task.title.trim(),
+    hours: Number.isFinite(task.hours) ? task.hours : 0,
+  };
+}
+
+function normalizeEntryForPersistence(entry: WeeklyTimesheetEntry): WeeklyTimesheetEntry {
+  const tasks = (entry.tasks ?? []).map((task, taskIndex) =>
+    normalizeTaskForPersistence(task, taskIndex, entry.date),
+  );
+
+  return {
+    ...entry,
+    projectCode: normalizeProjectCode(entry.projectCode),
+    notes: entry.notes ?? "",
+    tasks,
+    hours: tasks.length > 0 ? sumTaskHours(tasks) : Number.isFinite(entry.hours) ? entry.hours : 0,
+  };
+}
+
+function serializeTimeEntryNotes(entry: WeeklyTimesheetEntry): string | null {
+  const text = entry.notes.trim();
+  const tasks = entry.tasks ?? [];
+
+  if (text.length === 0 && tasks.length === 0) {
+    return null;
+  }
+
+  return JSON.stringify({
+    text,
+    tasks,
+  } satisfies SerializedTimeEntryNotes);
+}
+
+function parseTimeEntryNotes(notes: string | null | undefined): SerializedTimeEntryNotes {
+  if (!notes) {
+    return { text: "", tasks: [] };
+  }
+
+  try {
+    const parsed = JSON.parse(notes) as Partial<SerializedTimeEntryNotes>;
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.tasks)) {
+      return {
+        text: typeof parsed.text === "string" ? parsed.text : "",
+        tasks: parsed.tasks.map((task, taskIndex) =>
+          normalizeTaskForPersistence(task, taskIndex, "notes"),
+        ),
+      };
+    }
+  } catch {
+    // Fall through to legacy plain-text notes.
+  }
+
+  return { text: notes, tasks: [] };
+}
+
 function toTimesheetSummaryFromDb(row: SupabaseTimesheetRow): TimesheetSummaryRecord {
   return {
     id: row.id,
@@ -171,12 +242,14 @@ function toWeeklyRecordFromDb(
       continue;
     }
 
+    const parsedNotes = parseTimeEntryNotes(entry.notes);
+
     weekEntries[index] = {
       ...weekEntries[index],
       projectCode: projectCodeById.get(entry.project_id) ?? weekEntries[index].projectCode,
       hours: toNumber(entry.hours),
-      notes: entry.notes ?? "",
-      tasks: [],
+      notes: parsedNotes.text,
+      tasks: parsedNotes.tasks,
     };
   }
 
@@ -404,10 +477,8 @@ function normalizeSubmittedEntries(
   return entries
     .filter((entry) => Number.isFinite(entry.hours) && entry.hours > 0)
     .map((entry) => ({
-      ...entry,
+      ...normalizeEntryForPersistence(entry),
       projectCode: normalizeProjectCode(entry.projectCode),
-      notes: entry.notes ?? "",
-      tasks: [],
     }));
 }
 
@@ -682,13 +753,17 @@ export const consultantService = {
 
     if (draftEntriesToPersist.length > 0) {
       const { error: draftEntriesInsertError } = await supabase.from("time_entries").insert(
-        draftEntriesToPersist.map((entry) => ({
-          timesheet_id: timesheetId,
-          project_id: selectedProject.id,
-          entry_date: entry.date,
-          hours: entry.hours,
-          notes: entry.notes.trim(),
-        })),
+        draftEntriesToPersist.map((entry) => {
+          const normalizedEntry = normalizeEntryForPersistence(entry);
+
+          return {
+            timesheet_id: timesheetId,
+            project_id: selectedProject.id,
+            entry_date: normalizedEntry.date,
+            hours: normalizedEntry.hours,
+            notes: serializeTimeEntryNotes(normalizedEntry),
+          };
+        }),
       );
 
       if (draftEntriesInsertError) {
@@ -792,13 +867,17 @@ export const consultantService = {
     }
 
     const { error: entriesInsertError } = await supabase.from("time_entries").insert(
-      preparedEntries.map((entry) => ({
-        timesheet_id: timesheetId,
-        project_id: selectedProject.id,
-        entry_date: entry.date,
-        hours: entry.hours,
-        notes: entry.notes.trim(),
-      })),
+      preparedEntries.map((entry) => {
+        const normalizedEntry = normalizeEntryForPersistence(entry);
+
+        return {
+          timesheet_id: timesheetId,
+          project_id: selectedProject.id,
+          entry_date: normalizedEntry.date,
+          hours: normalizedEntry.hours,
+          notes: serializeTimeEntryNotes(normalizedEntry),
+        };
+      }),
     );
 
     if (entriesInsertError) {
