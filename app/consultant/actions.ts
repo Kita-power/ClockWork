@@ -8,7 +8,7 @@ import type {
 } from "@/services/consultant-service";
 
 type ActionResult =
-  | { ok: true; message: string }
+  | { ok: true; message: string; timesheetId?: string }
   | { ok: false; error: string };
 
 type LoadTimesheetResult =
@@ -51,9 +51,9 @@ export async function submitConsultantTimesheetAction(
   input: SaveTimesheetInput,
 ): Promise<ActionResult> {
   try {
-    await consultantService.submitWeeklyTimesheet(input);
+    const result = await consultantService.submitWeeklyTimesheet(input);
     revalidatePath("/consultant");
-    return { ok: true, message: "Timesheet submitted" };
+    return { ok: true, message: "Timesheet submitted", timesheetId: result.timesheetId };
   } catch (error) {
     return { ok: false, error: getErrorMessage(error) };
   }

@@ -476,7 +476,7 @@ export function ConsultantTimesheetClient({
 
         setTimesheet((prev) => ({ ...prev, status: "submitted" }));
         setSuccessMessage(result.message);
-        router.replace(`/consultant/timesheets/${timesheet.id}`);
+        router.replace(`/consultant/timesheets/${result.timesheetId ?? timesheet.id}`);
         router.refresh();
       });
     });
