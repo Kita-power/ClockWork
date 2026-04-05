@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -150,6 +150,40 @@ function prepareTimesheetEntries(entries: WeeklyTimesheetEntry[]): WeeklyTimeshe
   return entries.map((entry) => syncEntryTasks(entry));
 }
 
+function buildTimesheetSnapshot(
+  timesheet: WeeklyTimesheetRecord,
+  selectedProjectCode: string,
+): string {
+  return JSON.stringify({
+    id: timesheet.id,
+    weekStart: timesheet.weekStart,
+    weekEnd: timesheet.weekEnd,
+    projectCode: normalizeProjectCode(selectedProjectCode),
+    entries: prepareTimesheetEntries(timesheet.entries).map((entry) => ({
+      date: entry.date,
+      dayLabel: entry.dayLabel,
+      projectCode: normalizeProjectCode(entry.projectCode),
+      hours: Number.isFinite(entry.hours) ? entry.hours : 0,
+      notes: (entry.notes ?? "").trim(),
+      tasks: (entry.tasks ?? []).map((task) => ({
+        id: task.id,
+        title: task.title.trim(),
+        hours: Number.isFinite(task.hours) ? task.hours : 0,
+      })),
+    })),
+  });
+}
+
+function cloneTimesheetRecord(timesheet: WeeklyTimesheetRecord): WeeklyTimesheetRecord {
+  return {
+    ...timesheet,
+    entries: timesheet.entries.map((entry) => ({
+      ...entry,
+      tasks: (entry.tasks ?? []).map((task) => ({ ...task })),
+    })),
+  };
+}
+
 function normalizeProjectCode(projectCode: string): string {
   return projectCode.trim().toUpperCase();
 }
@@ -277,11 +311,19 @@ export function ConsultantTimesheetClient({
   useNewRouteForDrafts = false,
 }: ConsultantTimesheetClientProps) {
   const router = useRouter();
+  const initialNormalizedTimesheet = useMemo(
+    () => initializeTimesheet(initialTimesheet),
+    [initialTimesheet],
+  );
+  const initialSelectedProjectCode = useMemo(
+    () => resolveSelectedProjectCode(initialTimesheet),
+    [initialTimesheet],
+  );
   const [timesheet, setTimesheet] = useState(() =>
-    initializeTimesheet(initialTimesheet),
+    initialNormalizedTimesheet,
   );
   const [selectedProjectCode, setSelectedProjectCode] = useState(() =>
-    resolveSelectedProjectCode(initialTimesheet),
+    initialSelectedProjectCode,
   );
   const [expandedEntryIndex, setExpandedEntryIndex] = useState<number | null>(null);
   const [taskHoursDraftByKey, setTaskHoursDraftByKey] = useState<Record<string, string>>({});
@@ -292,7 +334,19 @@ export function ConsultantTimesheetClient({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const [pendingNavigationHref, setPendingNavigationHref] = useState<string | null>(null);
+  const [shouldNavigateAfterDiscard, setShouldNavigateAfterDiscard] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const savedSnapshotRef = useRef<string>(
+    buildTimesheetSnapshot(initialNormalizedTimesheet, initialSelectedProjectCode),
+  );
+  const savedTimesheetRef = useRef<WeeklyTimesheetRecord>(
+    cloneTimesheetRecord(initialNormalizedTimesheet),
+  );
+  const savedProjectCodeRef = useRef<string>(
+    normalizeProjectCode(initialSelectedProjectCode),
+  );
 
   const isSubmitted = timesheet.status === "submitted";
 
@@ -332,6 +386,155 @@ export function ConsultantTimesheetClient({
     () => buildMondayOptions(timesheet.weekStart),
     [timesheet.weekStart],
   );
+
+  const currentSnapshot = useMemo(
+    () => buildTimesheetSnapshot(timesheet, selectedProjectCode),
+    [selectedProjectCode, timesheet],
+  );
+
+  const hasUnsavedChanges = !isSubmitted && currentSnapshot !== savedSnapshotRef.current;
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    const handleDocumentNavigation = (event: MouseEvent) => {
+      if (!hasUnsavedChanges || isPending) {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const link = target.closest("a[href]") as HTMLAnchorElement | null;
+      if (!link) {
+        return;
+      }
+
+      if (link.target && link.target !== "_self") {
+        return;
+      }
+
+      if (link.hasAttribute("download")) {
+        return;
+      }
+
+      const href = link.getAttribute("href");
+      if (!href || href.startsWith("#")) {
+        return;
+      }
+
+      const targetUrl = new URL(href, window.location.href);
+      const currentUrl = new URL(window.location.href);
+
+      if (
+        targetUrl.pathname === currentUrl.pathname &&
+        targetUrl.search === currentUrl.search &&
+        targetUrl.hash === currentUrl.hash
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setPendingNavigationHref(`${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`);
+      setIsLeaveDialogOpen(true);
+    };
+
+    document.addEventListener("click", handleDocumentNavigation, true);
+    return () => document.removeEventListener("click", handleDocumentNavigation, true);
+  }, [hasUnsavedChanges, isPending]);
+
+  function markCurrentSnapshotAsSaved(): void {
+    const normalizedProjectCode = normalizeProjectCode(selectedProjectCode);
+    const normalizedEntries = prepareTimesheetEntries(timesheet.entries);
+    const savedTimesheet = {
+      ...timesheet,
+      entries: normalizedProjectCode
+        ? applyProjectCodeToEntries(normalizedEntries, normalizedProjectCode)
+        : normalizedEntries,
+    };
+
+    savedTimesheetRef.current = cloneTimesheetRecord(savedTimesheet);
+    savedProjectCodeRef.current = normalizedProjectCode;
+    savedSnapshotRef.current = buildTimesheetSnapshot(savedTimesheet, normalizedProjectCode);
+  }
+
+  function restoreSavedStateInEditor(): void {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setExpandedEntryIndex(null);
+    setTaskHoursDraftByKey({});
+    setPendingTaskDraftByEntry({});
+    setSelectedProjectCode(savedProjectCodeRef.current);
+    setTimesheet(cloneTimesheetRecord(savedTimesheetRef.current));
+  }
+
+  function navigateAfterLeaveConfirmation(): void {
+    if (!pendingNavigationHref) {
+      return;
+    }
+
+    const href = pendingNavigationHref;
+    setIsLeaveDialogOpen(false);
+    setPendingNavigationHref(null);
+    router.push(href);
+  }
+
+  function discardChangesAndNavigate(): void {
+    restoreSavedStateInEditor();
+    setShouldNavigateAfterDiscard(true);
+  }
+
+  useEffect(() => {
+    if (!shouldNavigateAfterDiscard) {
+      return;
+    }
+
+    if (currentSnapshot !== savedSnapshotRef.current) {
+      return;
+    }
+
+    setShouldNavigateAfterDiscard(false);
+    navigateAfterLeaveConfirmation();
+  }, [currentSnapshot, shouldNavigateAfterDiscard]);
+
+  function saveDraftThenNavigate(): void {
+    if (!pendingNavigationHref) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    startTransition(() => {
+      saveConsultantTimesheetDraftAction({
+        id: timesheet.id,
+        weekStart: timesheet.weekStart,
+        entries: prepareTimesheetEntries(timesheet.entries),
+      }).then((result) => {
+        if (!result.ok) {
+          setErrorMessage(result.error);
+          return;
+        }
+
+        markCurrentSnapshotAsSaved();
+        navigateAfterLeaveConfirmation();
+      });
+    });
+  }
 
   function updateEntry(
     index: number,
@@ -506,13 +709,21 @@ export function ConsultantTimesheetClient({
 
         const nextSelectedProjectCode = resolveSelectedProjectCode(result.timesheet);
         const normalizedNextProjectCode = normalizeProjectCode(nextSelectedProjectCode);
-
-        setSelectedProjectCode(
+        const resolvedNextProjectCode =
           assignedProjectCodes.has(normalizedNextProjectCode)
             ? normalizedNextProjectCode
-            : "",
+            : "";
+        const initializedTimesheet = initializeTimesheet(result.timesheet);
+
+        savedSnapshotRef.current = buildTimesheetSnapshot(
+          initializedTimesheet,
+          resolvedNextProjectCode,
         );
-        setTimesheet(initializeTimesheet(result.timesheet));
+        savedTimesheetRef.current = cloneTimesheetRecord(initializedTimesheet);
+        savedProjectCodeRef.current = resolvedNextProjectCode;
+
+        setSelectedProjectCode(resolvedNextProjectCode);
+        setTimesheet(initializedTimesheet);
         router.replace(
           useNewRouteForDrafts
             ? `/consultant/new?timesheetId=${result.timesheet.id}`
@@ -561,6 +772,7 @@ export function ConsultantTimesheetClient({
           return;
         }
 
+        markCurrentSnapshotAsSaved();
         setSuccessMessage(result.message);
         router.replace(
           useNewRouteForDrafts
@@ -588,6 +800,7 @@ export function ConsultantTimesheetClient({
           return;
         }
 
+        markCurrentSnapshotAsSaved();
         setTimesheet((prev) => ({ ...prev, status: "submitted" }));
         setSuccessMessage(result.message);
         router.replace(`/consultant/timesheets/${result.timesheetId ?? timesheet.id}`);
@@ -1069,6 +1282,39 @@ export function ConsultantTimesheetClient({
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isLeaveDialogOpen} onOpenChange={setIsLeaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save draft before leaving?</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes. Save this draft before leaving, or continue without saving and lose your updates.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsLeaveDialogOpen(false);
+                setPendingNavigationHref(null);
+              }}
+              disabled={isPending}
+            >
+              Stay on page
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={discardChangesAndNavigate}
+              disabled={isPending}
+            >
+              Leave without saving
+            </Button>
+            <Button onClick={saveDraftThenNavigate} disabled={isPending}>
+              Save Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
