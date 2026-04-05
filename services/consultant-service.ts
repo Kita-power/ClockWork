@@ -103,8 +103,11 @@ function addDays(date: Date, days: number): Date {
   return nextDate;
 }
 
-function buildTimesheetId(): string {
-  return `ts-${randomUUID()}`;
+function buildTimesheetId(weekStart?: string): string {
+  if (weekStart) {
+    return `ts_${weekStart}_${randomUUID()}`;
+  }
+  return `ts_${randomUUID()}`;
 }
 
 function buildDatabaseTimesheetId(): string {
@@ -332,15 +335,18 @@ function normalizeSubmittedEntries(
 }
 
 function resolveWeekStart(inputWeekStart?: string): Date {
+  let baseDate: Date;
+
   if (inputWeekStart) {
-    return parseIsoDate(inputWeekStart);
+    baseDate = parseIsoDate(inputWeekStart);
+  } else {
+    baseDate = new Date();
   }
 
-  const today = new Date();
-  const day = today.getDay();
+  const day = baseDate.getDay();
   const mondayOffset = day === 0 ? -6 : 1 - day;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + mondayOffset);
+  const monday = new Date(baseDate);
+  monday.setDate(baseDate.getDate() + mondayOffset);
   monday.setHours(0, 0, 0, 0);
   return monday;
 }
@@ -374,12 +380,13 @@ function buildWeekEntries(
 
 function buildDraftTimesheet(
   weekStart?: string,
-  id: string = buildTimesheetId(),
+  id?: string,
 ): WeeklyTimesheetRecord {
   const startDate = resolveWeekStart(weekStart);
   const normalizedWeekStart = toIsoDate(startDate);
+  const timesheetId = id ?? buildTimesheetId(normalizedWeekStart);
   return {
-    id,
+    id: timesheetId,
     weekStart: normalizedWeekStart,
     weekEnd: toIsoDate(addDays(startDate, 6)),
     status: "draft",
@@ -485,21 +492,26 @@ export const consultantService = {
   },
 
   async getWeeklyTimesheetById(timesheetId: string): Promise<WeeklyTimesheetRecord> {
-    // Draft IDs start with "ts-"; skip database lookup for drafts
-    const isDraftId = timesheetId.startsWith("ts-");
+    // Draft IDs start with "ts_"; skip database lookup for drafts
+    const isDraftId = timesheetId.startsWith("ts_");
 
-    if (!isDraftId) {
-      const consultantId = await getAuthenticatedConsultantId();
+    if (isDraftId) {
+      // Extract week start from draft ID format: ts_YYYY-MM-DD_UUID
+      const match = timesheetId.match(/^ts_([\d-]+)_/);
+      const weekStart = match ? match[1] : undefined;
+      return buildDraftTimesheet(weekStart, timesheetId);
+    }
 
-      if (consultantId) {
-        const submittedRecord = await findSubmittedTimesheetById(consultantId, timesheetId);
-        if (submittedRecord) {
-          const entries = await fetchSubmittedTimesheetEntries(submittedRecord.id);
-          const projectIds = Array.from(new Set(entries.map((entry) => entry.project_id)));
-          const projectCodeById = await fetchProjectCodesByIds(projectIds);
+    const consultantId = await getAuthenticatedConsultantId();
 
-          return toWeeklyRecordFromDb(submittedRecord, entries, projectCodeById);
-        }
+    if (consultantId) {
+      const submittedRecord = await findSubmittedTimesheetById(consultantId, timesheetId);
+      if (submittedRecord) {
+        const entries = await fetchSubmittedTimesheetEntries(submittedRecord.id);
+        const projectIds = Array.from(new Set(entries.map((entry) => entry.project_id)));
+        const projectCodeById = await fetchProjectCodesByIds(projectIds);
+
+        return toWeeklyRecordFromDb(submittedRecord, entries, projectCodeById);
       }
     }
 

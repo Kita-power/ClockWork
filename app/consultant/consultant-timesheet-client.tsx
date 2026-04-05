@@ -142,6 +142,43 @@ function normalizeProjectCode(projectCode: string): string {
   return projectCode.trim().toUpperCase();
 }
 
+function addDays(date: Date, days: number): Date {
+  const nextDate = new Date(date);
+  nextDate.setDate(date.getDate() + days);
+  nextDate.setHours(0, 0, 0, 0);
+  return nextDate;
+}
+
+function toIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatMondayLabel(dateString: string): string {
+  return new Date(`${dateString}T00:00:00`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function buildMondayOptions(anchorWeekStart: string): Array<{ value: string; label: string }> {
+  const anchorDate = new Date(`${anchorWeekStart}T00:00:00`);
+
+  return Array.from({ length: 105 }, (_, index) => {
+    const monday = addDays(anchorDate, (index - 52) * 7);
+    const value = toIsoDate(monday);
+
+    return {
+      value,
+      label: formatMondayLabel(value),
+    };
+  });
+}
+
 function applyProjectCodeToEntries(
   entries: WeeklyTimesheetEntry[],
   projectCode: string,
@@ -246,6 +283,11 @@ export function ConsultantTimesheetClient({
     hasProjectCodeValidationError ||
     hasUnassignedProjectValidationError ||
     !hasAssignedProjects;
+
+  const mondayOptions = useMemo(
+    () => buildMondayOptions(timesheet.weekStart),
+    [timesheet.weekStart],
+  );
 
   function updateEntry(
     index: number,
@@ -502,13 +544,22 @@ export function ConsultantTimesheetClient({
             <label className="text-sm font-medium" htmlFor="weekStart">
               Week starting
             </label>
-            <Input
-              id="weekStart"
-              type="date"
+            <Select
               value={timesheet.weekStart}
-              onChange={(event) => loadWeek(event.target.value)}
+              onValueChange={loadWeek}
               disabled={isPending}
-            />
+            >
+              <SelectTrigger id="weekStart" className="w-full">
+                <SelectValue placeholder="Select Monday" />
+              </SelectTrigger>
+              <SelectContent position="popper" align="start" side="bottom" sideOffset={8}>
+                {mondayOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-3 sm:max-w-xs">
