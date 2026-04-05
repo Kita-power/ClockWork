@@ -5,8 +5,6 @@ export default function ConsultantLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <RoleTopbarLayout
-      roleTag="Consultant"
-      userName="Leah Chen"
       subtitle="Create, update, and submit weekly timesheets."
       overviewHref="/consultant"
     >

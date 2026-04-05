@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser } from "@/hooks/use-user";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { formatRoleLabel } from "@/lib/format-role-label";
+import { TopbarUserMenu } from "@/components/topbar-user-menu";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,14 +20,8 @@ export default function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
-  const { fullName, role, isLoading, isAuthenticated } = useUser();
-  const adminName = fullName || "Admin User";
-  const adminInitials = adminName
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .slice(0, 2)
-    .join("");
+  const { fullName, email, role, isLoading, isAuthenticated } = useUser();
+  const displayName = fullName.trim() || email || "User";
 
   return (
     <main className="min-h-svh bg-muted/30">
@@ -47,31 +42,21 @@ export default function AdminLayout({
 
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
-              <Avatar className="size-8">
-                <AvatarFallback>{adminInitials}</AvatarFallback>
-              </Avatar>
-              <p className="text-sm font-semibold">
-                {isLoading
-                  ? "Loading..."
-                  : isAuthenticated
-                    ? adminName
-                    : ""}
-              </p>
-              {!isLoading && !isAuthenticated ? (
+              {isLoading ? (
+                <p className="text-sm font-semibold text-muted-foreground">Loading…</p>
+              ) : isAuthenticated ? (
+                <TopbarUserMenu userName={displayName} />
+              ) : (
                 <Link
                   href="/auth/login"
                   className="text-sm font-semibold underline underline-offset-4"
                 >
                   Log in
                 </Link>
-              ) : null}
+              )}
             </div>
             <Badge variant="secondary">
-              {isAuthenticated
-                ? role
-                  ? role.charAt(0).toUpperCase() + role.slice(1)
-                  : "Unknown"
-                : "Guest"}
+              {isLoading ? "…" : isAuthenticated ? formatRoleLabel(role) : "Guest"}
             </Badge>
           </div>
         </div>

@@ -53,6 +53,19 @@ A web application built with Next.js and Supabase for authentication and data ma
   ```
    Open [http://localhost:3000](http://localhost:3000).
 
+## Demo accounts (development)
+
+
+| Role          | Login email                                                   | Password           |
+| ------------- | ------------------------------------------------------------- | ------------------ |
+| Manager       | [manager@clockwork.com](mailto:manager@clockwork.com)         | `DyQE3BuQsQN35dDC` |
+| Consultant    | [consultantA@clockwork.com](mailto:consultantA@clockwork.com) | `SeLun6egTy8MApfv` |
+| Consultant    | [consultantB@clockwork.com](mailto:consultantB@clockwork.com) | `rboFAbdApR%%xXNp` |
+| Consultant    | [consultantc@clockwork.com](mailto:consultantc@clockwork.com) | `wQweye2oQ*Vxm2rf` |
+| Finance       | [Finance@clockwork.com](mailto:Finance@clockwork.com)         | `2BiLJPLfBP8FCz!@` |
+| Administrator | [bernard@clockwork.com](mailto:bernard@clockwork.com)         | `ucSFAwtodPB6zwFE` |
+
+
 ## Project Structure
 
 ```

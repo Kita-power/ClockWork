@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -38,8 +38,8 @@ import {
 } from "@/components/ui/sheet";
 import {
   createAdminUserAction,
+  resetAdminUserPasswordAction,
   setAdminUserActiveAction,
-  updateAdminUserRoleAction,
 } from "./actions";
 import { useUser } from "@/hooks/use-user";
 
@@ -102,6 +102,11 @@ export function AdminUsersClient({
     email: string;
     temporaryPassword: string;
   } | null>(null);
+  const [resetPasswordCredentials, setResetPasswordCredentials] = useState<{
+    email: string;
+    temporaryPassword: string;
+  } | null>(null);
+  const addUserFormRef = useRef<HTMLFormElement>(null);
 
   const allRoles = useMemo(
     () => ["All roles", ...new Set(users.map((user) => toUiRole(user.role)))],
@@ -137,6 +142,10 @@ export function AdminUsersClient({
       setNewUserManagerId("");
     }
   }, [newUserRole]);
+
+  useEffect(() => {
+    setResetPasswordCredentials(null);
+  }, [selectedUserId]);
 
   return (
     <>
@@ -273,7 +282,10 @@ export function AdminUsersClient({
       <Sheet
         open={Boolean(selectedUser)}
         onOpenChange={(open) => {
-          if (!open) setSelectedUserId(null);
+          if (!open) {
+            setSelectedUserId(null);
+            setResetPasswordCredentials(null);
+          }
         }}
       >
         <SheetContent className="w-full overflow-y-auto px-6 sm:max-w-md">
@@ -309,31 +321,47 @@ export function AdminUsersClient({
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Quick Actions</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {roleOptions.map((role) => (
-                    <Button
-                      key={role}
-                      type="button"
-                      variant="outline"
-                      disabled={isPending || !currentUser.isAdmin}
-                      onClick={() => {
-                        setErrorMessage(null);
-                        startTransition(async () => {
-                          const result = await updateAdminUserRoleAction({
-                            userId: selectedUser.id,
-                            role,
-                          });
-                          if (!result.ok) {
-                            setErrorMessage(result.error);
-                            return;
-                          }
-                          router.refresh();
+                <CardContent className="flex flex-col gap-2">
+                  {resetPasswordCredentials ? (
+                    <div className="rounded-md border border-emerald-400/40 bg-emerald-500/10 px-3 py-3 text-sm">
+                      <p className="font-medium text-emerald-700 dark:text-emerald-300">
+                        Password reset in Supabase Auth.
+                      </p>
+                      <p className="mt-1 text-muted-foreground">
+                        Login email: {resetPasswordCredentials.email}
+                      </p>
+                      <p className="font-mono">
+                        New password: {resetPasswordCredentials.temporaryPassword}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isPending || !currentUser.isAdmin}
+                    onClick={() => {
+                      setErrorMessage(null);
+                      startTransition(async () => {
+                        const result = await resetAdminUserPasswordAction({
+                          userId: selectedUser.id,
                         });
-                      }}
-                    >
-                      Set {toUiRole(role)}
-                    </Button>
-                  ))}
+                        if (!result.ok) {
+                          setErrorMessage(result.error);
+                          return;
+                        }
+                        if (result.temporaryPassword && result.email) {
+                          setResetPasswordCredentials({
+                            email: result.email,
+                            temporaryPassword: result.temporaryPassword,
+                          });
+                        }
+                        router.refresh();
+                      });
+                    }}
+                  >
+                    Reset password
+                  </Button>
 
                   <Button
                     type="button"
@@ -363,7 +391,17 @@ export function AdminUsersClient({
         </SheetContent>
       </Sheet>
 
-      <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+      <Dialog
+        open={isAddUserDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddUserDialogOpen(open);
+          if (!open) {
+            addUserFormRef.current?.reset();
+            setNewUserRole("consultant");
+            setNewUserManagerId("");
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add User</DialogTitle>
@@ -373,6 +411,7 @@ export function AdminUsersClient({
           </DialogHeader>
 
           <form
+            ref={addUserFormRef}
             className="flex flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();

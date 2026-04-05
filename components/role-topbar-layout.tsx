@@ -3,25 +3,22 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { TopbarUserMenu } from "@/components/topbar-user-menu";
 import { Badge } from "@/components/ui/badge";
-import { LogoutButton } from "@/components/logout-button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationButton } from "@/components/ui/notif-button";
 import type { Notification } from "@/components/ui/notif-button";
+import { useUser } from "@/hooks/use-user";
+import { formatRoleLabel } from "@/lib/format-role-label";
 
 type RoleTopbarLayoutProps = {
-  roleTag: string;
-  userName: string;
   subtitle: string;
   overviewHref?: string;
   children: React.ReactNode;
 };
 
 export function RoleTopbarLayout({
-  roleTag,
-  userName,
   subtitle,
   overviewHref,
   children,
@@ -29,12 +26,8 @@ export function RoleTopbarLayout({
   const pathname = usePathname();
   const overviewPath = overviewHref ?? pathname;
   const tabsValue = pathname.startsWith(overviewPath) ? overviewPath : pathname;
-  const initials = userName
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .slice(0, 2)
-    .join("");
+  const { fullName, email, role, isLoading, isAuthenticated } = useUser();
+  const displayName = fullName.trim() || email || "User";
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
@@ -80,18 +73,33 @@ export function RoleTopbarLayout({
 
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
-              <Avatar className="size-8">
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-              <p className="text-sm font-semibold">{userName}</p>
-              <NotificationButton
-                notifications={notifications}
-                onClose={handleCloseNotification}
-                onMarkAsRead={handleMarkAsRead}
-              />
+              {isAuthenticated ? (
+                <NotificationButton
+                  notifications={notifications}
+                  onClose={handleCloseNotification}
+                  onMarkAsRead={handleMarkAsRead}
+                />
+              ) : null}
+              {isLoading ? (
+                <p className="text-sm font-semibold text-muted-foreground">Loading…</p>
+              ) : isAuthenticated ? (
+                <TopbarUserMenu userName={displayName} />
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="text-sm font-semibold underline underline-offset-4"
+                >
+                  Log in
+                </Link>
+              )}
             </div>
-            <Badge variant="secondary">{roleTag}</Badge>
-            <LogoutButton redirectTo="/" label="Sign out" />
+            <Badge variant="secondary">
+              {isLoading
+                ? "…"
+                : isAuthenticated
+                  ? formatRoleLabel(role)
+                  : "Guest"}
+            </Badge>
           </div>
         </div>
         <Separator />

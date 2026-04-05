@@ -35,11 +35,13 @@ function getErrorMessage(error: unknown): string {
 export async function createAdminProjectAction(input: {
   name: string;
   code: string;
+  consultantIds?: string[];
 }): Promise<ActionResult> {
   try {
     await adminService.createProject({
       name: input.name,
       code: input.code,
+      consultantIds: input.consultantIds ?? [],
     });
     revalidatePath("/admin/projects");
     return { ok: true };

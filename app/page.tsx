@@ -12,7 +12,10 @@ import {
 export default function Home() {
   return (
     <main className="relative flex min-h-svh items-center justify-center overflow-hidden bg-gradient-to-b from-background to-foreground/5 p-6">
-      <div className="absolute right-4 top-4">
+      <div className="absolute right-4 top-4 flex items-center gap-2">
+        <Button asChild size="sm">
+          <Link href="/auth/login">Log in</Link>
+        </Button>
         <ThemeSwitcher />
       </div>
 
