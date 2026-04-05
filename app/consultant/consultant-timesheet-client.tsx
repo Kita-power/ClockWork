@@ -6,6 +6,15 @@ import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -187,6 +196,29 @@ function buildMondayOptions(anchorWeekStart: string): Array<{ value: string; lab
   });
 }
 
+function buildClearedEntries(weekStart: string): WeeklyTimesheetEntry[] {
+  const startDate = new Date(`${weekStart}T00:00:00`);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const currentDate = addDays(startDate, index);
+    return {
+      date: toIsoDate(currentDate),
+      dayLabel: currentDate.toLocaleDateString("en-US", { weekday: "short" }),
+      projectCode: "",
+      hours: 0,
+      notes: "",
+      tasks: [],
+    };
+  });
+}
+
+function buildClearedTimesheet(timesheet: WeeklyTimesheetRecord): WeeklyTimesheetRecord {
+  return {
+    ...timesheet,
+    entries: buildClearedEntries(timesheet.weekStart),
+  };
+}
+
 function applyProjectCodeToEntries(
   entries: WeeklyTimesheetEntry[],
   projectCode: string,
@@ -258,6 +290,7 @@ export function ConsultantTimesheetClient({
   >({});
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const isSubmitted = timesheet.status === "submitted";
@@ -499,6 +532,19 @@ export function ConsultantTimesheetClient({
     }));
   }
 
+  function clearForm(): void {
+    if (isSubmitted) return;
+
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setExpandedEntryIndex(null);
+    setTaskHoursDraftByKey({});
+    setPendingTaskDraftByEntry({});
+    setSelectedProjectCode("");
+    setTimesheet((prev) => buildClearedTimesheet(prev));
+    setIsClearDialogOpen(false);
+  }
+
   function saveDraft(): void {
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -558,9 +604,37 @@ export function ConsultantTimesheetClient({
               Enter billable work for the selected week, save as draft, and submit when complete.
             </CardDescription>
           </div>
-          <Badge variant={isSubmitted ? "secondary" : "outline"}>
-            {isSubmitted ? "Submitted" : "Draft"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {!isSubmitted ? (
+              <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={isPending}>
+                    Clear form
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Clear this timesheet?</DialogTitle>
+                    <DialogDescription>
+                      This will remove all values currently entered in the form. You can still
+                      save again after clearing, but the fields will be reset.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsClearDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button variant="destructive" onClick={clearForm}>
+                      Yes, clear form
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            ) : null}
+            <Badge variant={isSubmitted ? "secondary" : "outline"}>
+              {isSubmitted ? "Submitted" : "Draft"}
+            </Badge>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
