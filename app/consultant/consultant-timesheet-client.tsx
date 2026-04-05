@@ -332,6 +332,7 @@ export function ConsultantTimesheetClient({
   >({});
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSuccessMessageVisible, setIsSuccessMessageVisible] = useState(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
@@ -407,6 +408,38 @@ export function ConsultantTimesheetClient({
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      setIsSuccessMessageVisible(false);
+      setSuccessMessage(null);
+    };
+
+    window.addEventListener("pagehide", handlePageHide);
+    return () => window.removeEventListener("pagehide", handlePageHide);
+  }, []);
+
+  useEffect(() => {
+    if (!successMessage) {
+      setIsSuccessMessageVisible(false);
+      return;
+    }
+
+    setIsSuccessMessageVisible(true);
+
+    const hideTimeoutId = window.setTimeout(() => {
+      setIsSuccessMessageVisible(false);
+    }, 2500);
+
+    const clearTimeoutId = window.setTimeout(() => {
+      setSuccessMessage(null);
+    }, 3100);
+
+    return () => {
+      window.clearTimeout(hideTimeoutId);
+      window.clearTimeout(clearTimeoutId);
+    };
+  }, [successMessage]);
 
   useEffect(() => {
     const handleDocumentNavigation = (event: MouseEvent) => {
@@ -1228,9 +1261,18 @@ export function ConsultantTimesheetClient({
           ) : null}
 
           {successMessage ? (
-            <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600">
-              {successMessage}
-            </p>
+            <div
+              className={cn(
+                "overflow-hidden transition-all duration-500 ease-out",
+                isSuccessMessageVisible
+                  ? "max-h-20 opacity-100 translate-y-0"
+                  : "max-h-0 opacity-0 -translate-y-1",
+              )}
+            >
+              <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600">
+                {successMessage}
+              </p>
+            </div>
           ) : null}
 
           <div className="flex flex-wrap gap-2">
