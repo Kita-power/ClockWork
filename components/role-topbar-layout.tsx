@@ -73,13 +73,6 @@ export function RoleTopbarLayout({
 
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
-              {isAuthenticated ? (
-                <NotificationButton
-                  notifications={notifications}
-                  onClose={handleCloseNotification}
-                  onMarkAsRead={handleMarkAsRead}
-                />
-              ) : null}
               {isLoading ? (
                 <p className="text-sm font-semibold text-muted-foreground">Loading…</p>
               ) : isAuthenticated ? (
@@ -92,6 +85,13 @@ export function RoleTopbarLayout({
                   Log in
                 </Link>
               )}
+              {isAuthenticated ? (
+                <NotificationButton
+                  notifications={notifications}
+                  onClose={handleCloseNotification}
+                  onMarkAsRead={handleMarkAsRead}
+                />
+              ) : null}
             </div>
             <Badge variant="secondary">
               {isLoading
