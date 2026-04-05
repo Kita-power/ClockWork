@@ -23,6 +23,7 @@ export default async function ConsultantTimesheetDetailPage({
 
     return (
       <ConsultantTimesheetClient
+        key={timesheet.id}
         initialTimesheet={timesheet}
         assignedProjects={assignedProjects}
         initialError={null}
@@ -42,6 +43,7 @@ export default async function ConsultantTimesheetDetailPage({
     ]);
     return (
       <ConsultantTimesheetClient
+        key={fallback.id}
         initialTimesheet={fallback}
         assignedProjects={assignedProjects}
         initialError={message}
