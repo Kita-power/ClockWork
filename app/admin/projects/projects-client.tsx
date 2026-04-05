@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -11,7 +12,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -55,6 +64,7 @@ type AdminProject = {
 type AdminUser = {
   id: string;
   full_name: string;
+  email: string;
   role: "consultant" | "manager" | "finance" | "admin";
   is_active: boolean;
 };
@@ -66,6 +76,15 @@ type AssignedConsultant = {
   is_active: boolean;
   assigned_at: string;
 };
+
+function generateRandomProjectId(): string {
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  const suffix = Array.from(bytes, (b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase();
+  return `PRJ-${suffix}`;
+}
 
 export function AdminProjectsClient({
   projects,
@@ -81,8 +100,12 @@ export function AdminProjectsClient({
   const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All statuses");
-  const [createName, setCreateName] = useState("");
-  const [createCode, setCreateCode] = useState("");
+  const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
+  const [newProjectConsultantIds, setNewProjectConsultantIds] = useState<string[]>(
+    [],
+  );
+  const [newProjectCode, setNewProjectCode] = useState("");
+  const addProjectFormRef = useRef<HTMLFormElement>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedConsultantId, setSelectedConsultantId] = useState("");
   const [assignedConsultants, setAssignedConsultants] = useState<
@@ -141,15 +164,31 @@ export function AdminProjectsClient({
     };
   }, [selectedProjectId]);
 
+  function toggleNewProjectConsultant(consultantId: string) {
+    setNewProjectConsultantIds((prev) =>
+      prev.includes(consultantId)
+        ? prev.filter((id) => id !== consultantId)
+        : [...prev, consultantId],
+    );
+  }
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row flex-wrap items-end justify-between gap-4">
+    <>
+      <Card>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <CardTitle>Project Management</CardTitle>
           <CardDescription>
             Create projects, update status, and review staffing counts.
           </CardDescription>
         </div>
+        <Button
+          type="button"
+          disabled={!currentUser.isAdmin}
+          onClick={() => setIsAddProjectDialogOpen(true)}
+        >
+          Add Project
+        </Button>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-6">
@@ -171,62 +210,26 @@ export function AdminProjectsClient({
           </p>
         ) : null}
 
-        <form
-          className="grid grid-cols-1 gap-3 lg:grid-cols-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setErrorMessage(null);
-            startTransition(async () => {
-              const result = await createAdminProjectAction({
-                name: createName,
-                code: createCode,
-              });
-              if (!result.ok) {
-                setErrorMessage(result.error);
-                return;
-              }
-              setCreateName("");
-              setCreateCode("");
-              router.refresh();
-            });
-          }}
-        >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Input
-            type="text"
-            placeholder="Project name"
-            value={createName}
-            onChange={(event) => setCreateName(event.target.value)}
-          />
-          <Input
-            type="text"
-            placeholder="Unique project identifier"
-            value={createCode}
-            onChange={(event) => setCreateCode(event.target.value)}
-          />
-          <Input
-            type="text"
+            type="search"
             placeholder="Search projects"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
           />
-          <div className="flex gap-3">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="All statuses">All statuses</SelectItem>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Deactivated">Deactivated</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <Button type="submit" disabled={isPending || !currentUser.isAdmin}>
-              Create Project
-            </Button>
-          </div>
-        </form>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="All statuses">All statuses</SelectItem>
+                <SelectItem value="Active">Active</SelectItem>
+                <SelectItem value="Deactivated">Deactivated</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="rounded-md border">
           <Table>
@@ -478,6 +481,150 @@ export function AdminProjectsClient({
           ) : null}
         </SheetContent>
       </Sheet>
-    </Card>
+      </Card>
+
+      <Dialog
+        open={isAddProjectDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddProjectDialogOpen(open);
+          if (!open) {
+            addProjectFormRef.current?.reset();
+            setNewProjectConsultantIds([]);
+            setNewProjectCode("");
+          }
+        }}
+      >
+        <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-4 overflow-hidden sm:max-w-lg">
+          <DialogHeader className="shrink-0">
+            <DialogTitle>Add Project</DialogTitle>
+            <DialogDescription>
+              Create a project and optionally assign consultants immediately.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            ref={addProjectFormRef}
+            className="flex min-h-0 flex-1 flex-col gap-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setErrorMessage(null);
+              const formData = new FormData(event.currentTarget);
+              const name = String(formData.get("name") ?? "");
+              const code = String(formData.get("code") ?? "");
+              startTransition(async () => {
+                const result = await createAdminProjectAction({
+                  name,
+                  code,
+                  consultantIds: newProjectConsultantIds,
+                });
+                if (!result.ok) {
+                  setErrorMessage(result.error);
+                  return;
+                }
+                setIsAddProjectDialogOpen(false);
+                router.refresh();
+              });
+            }}
+          >
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="project-name">Project name</Label>
+              <Input
+                id="project-name"
+                name="name"
+                type="text"
+                placeholder="e.g. Northbridge rollout"
+                required
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="project-code">Unique identifier</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="project-code"
+                  name="code"
+                  type="text"
+                  className="min-w-0 flex-1"
+                  value={newProjectCode}
+                  onChange={(event) => setNewProjectCode(event.target.value)}
+                  placeholder="e.g. NBR-2026"
+                  required
+                  autoComplete="off"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  disabled={isPending}
+                  onClick={() => setNewProjectCode(generateRandomProjectId())}
+                >
+                  Generate
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col gap-2">
+              <Label>Assign consultants</Label>
+              <p className="text-sm text-muted-foreground">
+                Active consultants only. You can change assignments later from project
+                details.
+              </p>
+              <div
+                className="h-[min(45vh,320px)] min-h-[10rem] overflow-y-auto overscroll-y-contain rounded-md border bg-muted/20 p-2 scrollbar-gutter-stable"
+              >
+                {consultantOptions.length === 0 ? (
+                  <p className="px-2 py-3 text-sm text-muted-foreground">
+                    No active consultants yet.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-1 pr-1">
+                    {consultantOptions.map((consultant) => (
+                      <li key={consultant.id}>
+                        <label
+                          htmlFor={`new-project-consultant-${consultant.id}`}
+                          className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 hover:bg-muted/50"
+                        >
+                          <Checkbox
+                            id={`new-project-consultant-${consultant.id}`}
+                            checked={newProjectConsultantIds.includes(consultant.id)}
+                            onCheckedChange={() =>
+                              toggleNewProjectConsultant(consultant.id)
+                            }
+                            disabled={isPending}
+                          />
+                          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <span className="text-sm font-medium leading-none">
+                              {consultant.full_name}
+                            </span>
+                            <span className="truncate text-xs text-muted-foreground">
+                              {consultant.email}
+                            </span>
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <div className="flex shrink-0 justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddProjectDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isPending || !currentUser.isAdmin}>
+                Create Project
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

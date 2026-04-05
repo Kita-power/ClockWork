@@ -1,32 +1,57 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { TopbarUserMenu } from "@/components/topbar-user-menu";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NotificationButton } from "@/components/ui/notif-button";
+import type { Notification } from "@/components/ui/notif-button";
+import { useUser } from "@/hooks/use-user";
+import { formatRoleLabel } from "@/lib/format-role-label";
 
 type RoleTopbarLayoutProps = {
-  roleTag: string;
-  userName: string;
   subtitle: string;
+  overviewHref?: string;
   children: React.ReactNode;
 };
 
 export function RoleTopbarLayout({
-  roleTag,
-  userName,
   subtitle,
+  overviewHref,
   children,
 }: RoleTopbarLayoutProps) {
   const pathname = usePathname();
-  const initials = userName
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .slice(0, 2)
-    .join("");
+  const overviewPath = overviewHref ?? pathname;
+  const tabsValue = pathname.startsWith(overviewPath) ? overviewPath : pathname;
+  const { fullName, email, role, isLoading, isAuthenticated } = useUser();
+  const displayName = fullName.trim() || email || "User";
+
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    setNotifications([
+      {
+        id: "1",
+        title: "Timesheet Submitted",
+        description: "Your weekly timesheet has been successfully submitted",
+        timestamp: new Date(Date.now() - 2 * 3600000),
+        read: false,
+      },
+    ]);
+  }, []);
+
+  const handleCloseNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const handleMarkAsRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+    );
+  };
 
   return (
     <main className="min-h-svh bg-muted/30">
@@ -35,10 +60,12 @@ export function RoleTopbarLayout({
           <div className="min-w-0">
             <h1 className="text-3xl font-semibold tracking-tight">Clockwork</h1>
             <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-            <Tabs value={pathname} className="mt-3">
+            <Tabs value={tabsValue} className="mt-3">
               <TabsList>
-                <TabsTrigger value={pathname} asChild>
-                  <Link href={pathname}>Overview</Link>
+                <TabsTrigger value={overviewPath} asChild>
+                  <Link href={overviewPath} prefetch={false}>
+                    Overview
+                  </Link>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -46,12 +73,33 @@ export function RoleTopbarLayout({
 
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
-              <Avatar className="size-8">
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-              <p className="text-sm font-semibold">{userName}</p>
+              {isAuthenticated ? (
+                <NotificationButton
+                  notifications={notifications}
+                  onClose={handleCloseNotification}
+                  onMarkAsRead={handleMarkAsRead}
+                />
+              ) : null}
+              {isLoading ? (
+                <p className="text-sm font-semibold text-muted-foreground">Loading…</p>
+              ) : isAuthenticated ? (
+                <TopbarUserMenu userName={displayName} />
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="text-sm font-semibold underline underline-offset-4"
+                >
+                  Log in
+                </Link>
+              )}
             </div>
-            <Badge variant="secondary">{roleTag}</Badge>
+            <Badge variant="secondary">
+              {isLoading
+                ? "…"
+                : isAuthenticated
+                  ? formatRoleLabel(role)
+                  : "Guest"}
+            </Badge>
           </div>
         </div>
         <Separator />

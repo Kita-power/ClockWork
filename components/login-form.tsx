@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { getRoleHomePath } from "@/lib/role-home-path";
 
 export function LoginForm({
   className,
@@ -31,8 +32,22 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/protected");
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("No user returned after login");
+      }
+
+      const { data: profile } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      router.push(getRoleHomePath(profile?.role));
+      router.refresh();
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -102,16 +117,6 @@ export function LoginForm({
           </Button>
         </div>
       </form>
-
-      <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
-        <Link
-          href="/auth/sign-up"
-          className="font-medium text-primary underline underline-offset-4"
-        >
-          Sign up
-        </Link>
-      </p>
     </div>
   );
 }
