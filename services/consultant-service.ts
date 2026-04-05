@@ -249,9 +249,10 @@ async function listAssignedProjectsForConsultantId(
   }));
 }
 
-async function findSubmittedTimesheetByWeekStart(
+async function findSubmittedTimesheetByWeekAndProject(
   consultantId: string,
   weekStart: string,
+  projectId: string,
 ): Promise<SupabaseTimesheetRow | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -261,6 +262,7 @@ async function findSubmittedTimesheetByWeekStart(
     )
     .eq("consultant_id", consultantId)
     .eq("week_start_date", weekStart)
+    .eq("project_id", projectId)
     .eq("status", "submitted")
     .maybeSingle();
 
@@ -524,25 +526,8 @@ export const consultantService = {
   },
 
   async getWeeklyTimesheet(weekStart?: string): Promise<WeeklyTimesheetRecord> {
-    const consultantId = await getAuthenticatedConsultantId();
     const startDate = resolveWeekStart(weekStart);
     const normalizedWeekStart = toIsoDate(startDate);
-
-    if (consultantId) {
-      const submittedRecord = await findSubmittedTimesheetByWeekStart(
-        consultantId,
-        normalizedWeekStart,
-      );
-
-      if (submittedRecord) {
-        const entries = await fetchSubmittedTimesheetEntries(submittedRecord.id);
-        const projectIds = Array.from(new Set(entries.map((entry) => entry.project_id)));
-        const projectCodeById = await fetchProjectCodesByIds(projectIds);
-
-        return toWeeklyRecordFromDb(submittedRecord, entries, projectCodeById);
-      }
-    }
-
     return buildDraftTimesheet(normalizedWeekStart);
   },
 
@@ -589,30 +574,22 @@ export const consultantService = {
     const selectedProjectCode = normalizeProjectCode(
       input.entries.find((entry) => normalizeProjectCode(entry.projectCode).length > 0)?.projectCode ?? "",
     );
-
-    const submittedRecord = await findSubmittedTimesheetByWeekStart(
-      consultantId,
-      normalizedWeekStart,
-    );
-
-    if (submittedRecord) {
-      const existingEntries = await fetchSubmittedTimesheetEntries(submittedRecord.id);
-      const existingProjectIds = Array.from(new Set(existingEntries.map((entry) => entry.project_id)));
-      const existingProjectCodeMap = await fetchProjectCodesByIds(existingProjectIds);
-      const existingProjectCode = existingProjectCodeMap.get(
-        existingProjectIds[0] ?? "",
-      ) ?? "";
-
-      if (normalizeProjectCode(existingProjectCode) === selectedProjectCode) {
-        throw new Error("A timesheet for this week with the same project code has already been submitted.");
-      }
-    }
     const selectedProject = assignedProjects.find(
       (project) => normalizeProjectCode(project.code) === selectedProjectCode,
     );
 
     if (!selectedProject) {
       throw new Error("The selected project is not assigned to your account.");
+    }
+
+    const existingSubmittedRecord = await findSubmittedTimesheetByWeekAndProject(
+      consultantId,
+      normalizedWeekStart,
+      selectedProject.id,
+    );
+
+    if (existingSubmittedRecord) {
+      throw new Error("A timesheet for this week with the same project code has already been submitted.");
     }
 
     const providedTimesheetId =
@@ -719,22 +696,14 @@ export const consultantService = {
     const startDate = resolveWeekStart(input.weekStart);
     const normalizedWeekStart = toIsoDate(startDate);
 
-    const submittedRecord = await findSubmittedTimesheetByWeekStart(
+    const existingSubmittedRecord = await findSubmittedTimesheetByWeekAndProject(
       consultantId,
       normalizedWeekStart,
+      selectedProject.id,
     );
 
-    if (submittedRecord) {
-      const existingEntries = await fetchSubmittedTimesheetEntries(submittedRecord.id);
-      const existingProjectIds = Array.from(new Set(existingEntries.map((entry) => entry.project_id)));
-      const existingProjectCodeMap = await fetchProjectCodesByIds(existingProjectIds);
-      const existingProjectCode = existingProjectCodeMap.get(
-        existingProjectIds[0] ?? "",
-      ) ?? "";
-
-      if (normalizeProjectCode(existingProjectCode) === selectedProjectCode) {
-        throw new Error("A timesheet for this week with the same project code has already been submitted.");
-      }
+    if (existingSubmittedRecord) {
+      throw new Error("A timesheet for this week with the same project code has already been submitted.");
     }
 
     const submittedAt = new Date().toISOString();
