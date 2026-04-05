@@ -416,6 +416,30 @@ async function findDraftTimesheetById(
   return (data as SupabaseTimesheetRow | null) ?? null;
 }
 
+async function findDraftTimesheetByWeekAndProject(
+  consultantId: string,
+  weekStart: string,
+  projectId: string,
+): Promise<SupabaseTimesheetRow | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("timesheets")
+    .select(
+      "id, consultant_id, week_start_date, week_end_date, status, total_hours, submitted_at, approved_at, processed_at, being_processed_at, export_completed, created_at, updated_at",
+    )
+    .eq("consultant_id", consultantId)
+    .eq("week_start_date", weekStart)
+    .eq("project_id", projectId)
+    .eq("status", "draft")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as SupabaseTimesheetRow | null) ?? null;
+}
+
 async function findTimesheetById(
   consultantId: string,
   timesheetId: string,
@@ -693,6 +717,18 @@ export const consultantService = {
     const existingDraft = providedTimesheetId
       ? await findDraftTimesheetById(consultantId, providedTimesheetId)
       : null;
+
+    if (!existingDraft && providedTimesheetId) {
+      const otherDraftRecord = await findDraftTimesheetByWeekAndProject(
+        consultantId,
+        normalizedWeekStart,
+        selectedProject.id,
+      );
+
+      if (otherDraftRecord) {
+        throw new Error("A draft timesheet of the same week and the same project code already exists.");
+      }
+    }
 
     const timesheetId = existingDraft?.id ?? providedTimesheetId ?? buildDatabaseTimesheetId();
 
