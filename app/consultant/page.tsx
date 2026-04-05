@@ -144,8 +144,12 @@ async function ConsultantPageContent({
                         {timesheet.projectCode || "-"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={timesheet.status === "submitted" ? "secondary" : "outline"}>
-                          {timesheet.status === "submitted" ? "Submitted" : "Draft"}
+                        <Badge variant={timesheet.status === "draft" ? "outline" : "secondary"}>
+                          {timesheet.status === "submitted_late"
+                            ? "Submitted Late"
+                            : timesheet.status === "submitted"
+                              ? "Submitted"
+                              : "Draft"}
                         </Badge>
                       </TableCell>
                       <TableCell>{timesheet.totalHours.toFixed(2)}</TableCell>
@@ -154,7 +158,7 @@ async function ConsultantPageContent({
                         <div className="flex justify-end gap-2">
                           <Button asChild size="sm" variant="outline">
                             <Link href={`/consultant/timesheets/${timesheet.id}`}>
-                              {timesheet.status === "submitted" ? "View" : "Continue"}
+                              {timesheet.status === "draft" ? "Continue" : "View"}
                             </Link>
                           </Button>
                           {timesheet.status === "draft" ? (

@@ -350,7 +350,14 @@ export function ConsultantTimesheetClient({
   );
   const errorMessageRef = useRef<HTMLParagraphElement>(null);
 
-  const isSubmitted = timesheet.status === "submitted";
+  const isSubmitted =
+    timesheet.status === "submitted" || timesheet.status === "submitted_late";
+  const statusLabel =
+    timesheet.status === "submitted_late"
+      ? "Submitted Late"
+      : timesheet.status === "submitted"
+        ? "Submitted"
+        : "Draft";
 
   const totalHours = useMemo(
     () =>
@@ -840,7 +847,7 @@ export function ConsultantTimesheetClient({
         }
 
         markCurrentSnapshotAsSaved();
-        setTimesheet((prev) => ({ ...prev, status: "submitted" }));
+        setTimesheet((prev) => ({ ...prev, status: result.status ?? "submitted" }));
         setSuccessMessage(result.message);
         router.replace(`/consultant/timesheets/${result.timesheetId ?? timesheet.id}`);
         router.refresh();
@@ -886,7 +893,7 @@ export function ConsultantTimesheetClient({
               </Dialog>
             ) : null}
             <Badge variant={isSubmitted ? "secondary" : "outline"}>
-              {isSubmitted ? "Submitted" : "Draft"}
+              {statusLabel}
             </Badge>
           </div>
         </CardHeader>

@@ -4,11 +4,12 @@ import { revalidatePath } from "next/cache";
 import { consultantService } from "@/services";
 import type {
   SaveTimesheetInput,
+  TimesheetStatus,
   WeeklyTimesheetRecord,
 } from "@/services/consultant-service";
 
 type ActionResult =
-  | { ok: true; message: string; timesheetId?: string }
+  | { ok: true; message: string; timesheetId?: string; status?: TimesheetStatus }
   | { ok: false; error: string };
 
 type LoadTimesheetResult =
@@ -64,7 +65,15 @@ export async function submitConsultantTimesheetAction(
   try {
     const result = await consultantService.submitWeeklyTimesheet(input);
     revalidatePath("/consultant");
-    return { ok: true, message: "Timesheet submitted", timesheetId: result.timesheetId };
+    return {
+      ok: true,
+      message:
+        result.status === "submitted_late"
+          ? "Timesheet submitted late"
+          : "Timesheet submitted",
+      timesheetId: result.timesheetId,
+      status: result.status,
+    };
   } catch (error) {
     return { ok: false, error: getErrorMessage(error) };
   }

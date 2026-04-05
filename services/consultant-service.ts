@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 
-export type TimesheetStatus = "draft" | "submitted";
+export type TimesheetStatus = "draft" | "submitted" | "submitted_late";
 
 export type WeeklyTimesheetTask = {
   id: string;
@@ -135,7 +135,23 @@ function buildDatabaseTimesheetId(): string {
 }
 
 function normalizeTimesheetStatus(value: string | null | undefined): TimesheetStatus {
-  return value === "submitted" ? "submitted" : "draft";
+  if (value === "submitted") {
+    return "submitted";
+  }
+
+  if (value === "submitted_late") {
+    return "submitted_late";
+  }
+
+  return "draft";
+}
+
+function resolveSubmissionStatus(weekStart: string, submittedAt: Date): TimesheetStatus {
+  const weekStartDate = parseIsoDate(weekStart);
+  const submissionDeadline = addDays(weekStartDate, 7);
+  submissionDeadline.setHours(0, 0, 0, 0);
+
+  return submittedAt.getTime() > submissionDeadline.getTime() ? "submitted_late" : "submitted";
 }
 
 function toNumber(value: number | string | null | undefined): number {
@@ -362,7 +378,7 @@ async function findSubmittedTimesheetByWeekAndProject(
     .eq("consultant_id", consultantId)
     .eq("week_start_date", weekStart)
     .eq("project_id", projectId)
-    .eq("status", "submitted")
+    .in("status", ["submitted", "submitted_late"])
     .maybeSingle();
 
   if (error) {
@@ -810,7 +826,9 @@ export const consultantService = {
     return { savedAt, timesheetId };
   },
 
-  async submitWeeklyTimesheet(input: SaveTimesheetInput): Promise<{ submittedAt: string; timesheetId: string }> {
+  async submitWeeklyTimesheet(
+    input: SaveTimesheetInput,
+  ): Promise<{ submittedAt: string; timesheetId: string; status: TimesheetStatus }> {
     validateTimesheetEntries(input.entries);
     const consultantId = await getAuthenticatedConsultantId();
     if (!consultantId) {
@@ -842,7 +860,9 @@ export const consultantService = {
       throw new Error("A timesheet for this week with the same project code has already been submitted.");
     }
 
-    const submittedAt = new Date().toISOString();
+    const submittedAtDate = new Date();
+    const submittedAt = submittedAtDate.toISOString();
+    const submissionStatus = resolveSubmissionStatus(normalizedWeekStart, submittedAtDate);
     const providedTimesheetId = getDatabaseTimesheetId(input.id);
     const existingDraft = providedTimesheetId
       ? await findDraftTimesheetById(consultantId, providedTimesheetId)
@@ -857,7 +877,7 @@ export const consultantService = {
       being_processed_by: null,
       week_start_date: normalizedWeekStart,
       week_end_date: toIsoDate(addDays(startDate, 6)),
-      status: "submitted" as const,
+      status: submissionStatus,
       total_hours: sumEntriesHours(preparedEntries),
       submitted_at: submittedAt,
       approved_at: null,
@@ -929,7 +949,7 @@ export const consultantService = {
       throw new Error(entriesInsertError.message);
     }
 
-    return { submittedAt, timesheetId };
+    return { submittedAt, timesheetId, status: submissionStatus };
   },
 
   async deleteDraftTimesheet(timesheetId: string): Promise<void> {
