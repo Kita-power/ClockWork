@@ -15,16 +15,20 @@ type UserState = {
   error: string | null;
 };
 
+
+const EMPTY_STATE: UserState = {
+  id: "",
+  email: "",
+  fullName: "",
+  role: null,
+  isActive: false,
+  isLoading: true,
+  error: null,
+};
+
 export function useUser() {
-  const [state, setState] = useState<UserState>({
-    id: "",
-    email: "",
-    fullName: "",
-    role: null,
-    isActive: false,
-    isLoading: true,
-    error: null,
-  });
+  
+  const [state, setState] = useState<UserState>(EMPTY_STATE);
 
   useEffect(() => {
     let isMounted = true;
@@ -78,8 +82,20 @@ export function useUser() {
 
     loadUser();
 
+    
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (!isMounted) return;
+
+      if (event === "SIGNED_OUT") {
+        setState({ ...EMPTY_STATE, isLoading: false, error: null });
+        return;
+      }
+      loadUser();
+    });
+
     return () => {
       isMounted = false;
+      authListener?.subscription.unsubscribe();
     };
   }, []);
 
