@@ -1,6 +1,12 @@
-import { PageTemplate } from "@/components/page-template";
 import { financeService } from "@/services";
+import { FinanceTimesheetsClient } from "./timesheets-client";
 
-export default function FinancePage() {
-  return <PageTemplate message={financeService.pageMessage} />;
+export default async function FinancePage() {
+  try {
+    const timesheets = await financeService.listApprovedTimesheets();
+    return <FinanceTimesheetsClient timesheets={timesheets} initialError={null} />;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to load timesheets";
+    return <FinanceTimesheetsClient timesheets={[]} initialError={message} />;
+  }
 }
