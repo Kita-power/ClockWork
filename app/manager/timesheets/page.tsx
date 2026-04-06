@@ -1,14 +1,10 @@
-import { ManagerDashboardClient } from "../manager-dashboard-client";
-import {
-  managerMockLeaveRequests,
-  managerMockTimesheets,
-} from "../mock-data";
+import { Suspense } from "react";
+import ManagerTimesheetsContent from "./timesheets-content";
 
 export default function ManagerTimesheetsPage() {
   return (
-    <ManagerDashboardClient
-      initialTimesheets={managerMockTimesheets}
-      initialLeaveRequests={managerMockLeaveRequests}
-    />
+    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading…</div>}>
+      <ManagerTimesheetsContent />
+    </Suspense>
   );
 }
