@@ -8,6 +8,7 @@ export type StoredNotification = {
 
 export const NOTIFICATION_STORAGE_KEY = "clockwork.notifications";
 export const NOTIFICATION_EVENT_NAME = "clockwork:notification-added";
+export const NOTIFIED_TIMESHEETS_KEY = "clockwork.notified-timesheets";
 
 export type NotificationEventDetail = StoredNotification;
 
@@ -35,6 +36,67 @@ export function createTimesheetSubmittedNotification(input: {
     timestamp: new Date().toISOString(),
     read: false,
   };
+}
+
+export function createTimesheetApprovedNotification(input: {
+  projectCode: string;
+  weekStart: string;
+  weekEnd: string;
+}): StoredNotification {
+  const weekRangeText = `${formatDateForNotification(input.weekStart)} to ${formatDateForNotification(input.weekEnd)}`;
+
+  return {
+    id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
+    title: "Timesheet Approved",
+    description: `Your timesheet for project code ${input.projectCode} for the week of ${weekRangeText} has been approved by your manager.`,
+    timestamp: new Date().toISOString(),
+    read: false,
+  };
+}
+
+export function createTimesheetRejectedNotification(input: {
+  projectCode: string;
+  weekStart: string;
+  weekEnd: string;
+}): StoredNotification {
+  const weekRangeText = `${formatDateForNotification(input.weekStart)} to ${formatDateForNotification(input.weekEnd)}`;
+
+  return {
+    id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
+    title: "Timesheet Rejected",
+    description: `Your timesheet for project code ${input.projectCode} for the week of ${weekRangeText} has been rejected. Please review the feedback and resubmit.`,
+    timestamp: new Date().toISOString(),
+    read: false,
+  };
+}
+
+export function loadNotifiedTimesheetIds(): Set<string> {
+  if (typeof window === "undefined") {
+    return new Set();
+  }
+
+  const raw = window.localStorage.getItem(NOTIFIED_TIMESHEETS_KEY);
+
+  if (!raw) {
+    return new Set();
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as string[];
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function markTimesheetAsNotified(timesheetId: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const notified = loadNotifiedTimesheetIds();
+  notified.add(timesheetId);
+  window.localStorage.setItem(NOTIFIED_TIMESHEETS_KEY, JSON.stringify(Array.from(notified)));
 }
 
 export function loadNotifications(): StoredNotification[] {
