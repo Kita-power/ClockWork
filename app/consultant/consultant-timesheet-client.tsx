@@ -358,10 +358,21 @@ export function ConsultantTimesheetClient({
   );
   const errorMessageRef = useRef<HTMLParagraphElement>(null);
 
-  const isSubmitted =
-    timesheet.status === "submitted" || timesheet.status === "submitted_late";
+  const isReadOnly =
+    timesheet.status === "submitted" ||
+    timesheet.status === "submitted_late" ||
+    timesheet.status === "approved" ||
+    timesheet.status === "rejected";
   const displayStatus = getConsultantTimesheetDisplayStatus(timesheet.status, timesheet.weekStart);
   const statusLabel = formatConsultantTimesheetStatusLabel(timesheet.status, timesheet.weekStart);
+  const readOnlyMessage =
+    timesheet.status === "approved"
+      ? "This timesheet has been approved and is now read-only."
+      : timesheet.status === "rejected"
+        ? "This timesheet has been rejected and is now read-only."
+        : timesheet.status === "submitted_late"
+          ? "This timesheet was submitted late and is now read-only."
+          : "This timesheet has been submitted and is now read-only.";
 
   const totalHours = useMemo(
     () =>
@@ -405,7 +416,7 @@ export function ConsultantTimesheetClient({
     [selectedProjectCode, timesheet],
   );
 
-  const hasUnsavedChanges = !isSubmitted && currentSnapshot !== savedSnapshotRef.current;
+  const hasUnsavedChanges = !isReadOnly && currentSnapshot !== savedSnapshotRef.current;
 
   useEffect(() => {
     if (!hasUnsavedChanges) {
@@ -590,7 +601,7 @@ export function ConsultantTimesheetClient({
     index: number,
     patch: Partial<WeeklyTimesheetEntry>,
   ): void {
-    if (isSubmitted) return;
+    if (isReadOnly) return;
 
     setTimesheet((prev) => ({
       ...prev,
@@ -604,7 +615,7 @@ export function ConsultantTimesheetClient({
     index: number,
     taskUpdater: (tasks: WeeklyTimesheetTask[]) => WeeklyTimesheetTask[],
   ): void {
-    if (isSubmitted) return;
+    if (isReadOnly) return;
 
     setTimesheet((prev) => {
       const nextEntries = prev.entries.map((entry, entryIndex) => {
@@ -739,7 +750,7 @@ export function ConsultantTimesheetClient({
   }
 
   function loadWeek(weekStart: string): void {
-    if (isSubmitted) return;
+    if (isReadOnly) return;
 
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -784,7 +795,7 @@ export function ConsultantTimesheetClient({
   }
 
   function updateWeeklyProjectCode(projectCode: string): void {
-    if (isSubmitted) return;
+    if (isReadOnly) return;
 
     const normalizedProjectCode = normalizeProjectCode(projectCode);
     setSelectedProjectCode(normalizedProjectCode);
@@ -795,7 +806,7 @@ export function ConsultantTimesheetClient({
   }
 
   function clearForm(): void {
-    if (isSubmitted) return;
+    if (isReadOnly) return;
 
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -878,7 +889,7 @@ export function ConsultantTimesheetClient({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {!isSubmitted ? (
+            {!isReadOnly ? (
               <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" disabled={isPending}>
@@ -908,7 +919,7 @@ export function ConsultantTimesheetClient({
               variant={
                 displayStatus === "overdue"
                   ? "destructive"
-                  : isSubmitted
+                  : isReadOnly
                     ? "secondary"
                     : "outline"
               }
@@ -919,6 +930,12 @@ export function ConsultantTimesheetClient({
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {isReadOnly ? (
+            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700">
+              {readOnlyMessage}
+            </p>
+          ) : null}
+
           <div className="grid gap-3 sm:max-w-xs">
             <label className="text-sm font-medium" htmlFor="weekStart">
               Week starting
@@ -926,7 +943,7 @@ export function ConsultantTimesheetClient({
             <Select
               value={timesheet.weekStart}
               onValueChange={loadWeek}
-              disabled={isSubmitted || isPending}
+              disabled={isReadOnly || isPending}
             >
               <SelectTrigger id="weekStart" className="w-full">
                 <SelectValue placeholder="Select Monday" />
@@ -948,7 +965,7 @@ export function ConsultantTimesheetClient({
             <Select
               value={selectedProjectCode}
               onValueChange={updateWeeklyProjectCode}
-              disabled={isSubmitted || isPending || !hasAssignedProjects}
+              disabled={isReadOnly || isPending || !hasAssignedProjects}
             >
               <SelectTrigger id="projectCode" className="w-full">
                 <SelectValue
@@ -1055,7 +1072,7 @@ export function ConsultantTimesheetClient({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => openTaskDraft(index)}
-                                disabled={isSubmitted || isPending}
+                                disabled={isReadOnly || isPending}
                               >
                                 <Plus className="h-4 w-4" />
                                 Add task
@@ -1083,7 +1100,7 @@ export function ConsultantTimesheetClient({
                                       })
                                     }
                                     placeholder="Describe the task"
-                                    disabled={isSubmitted || isPending}
+                                    disabled={isReadOnly || isPending}
                                   />
                                 </div>
                                 <div className="grid gap-1">
@@ -1137,7 +1154,7 @@ export function ConsultantTimesheetClient({
                                         hours: Number.isNaN(nextHours) ? 0 : nextHours,
                                       });
                                     }}
-                                    disabled={isSubmitted || isPending}
+                                    disabled={isReadOnly || isPending}
                                   />
                                 </div>
                                 <div className="flex items-end justify-end">
@@ -1146,7 +1163,7 @@ export function ConsultantTimesheetClient({
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => removeTaskFromEntry(index, taskIndex)}
-                                    disabled={isSubmitted || isPending}
+                                    disabled={isReadOnly || isPending}
                                     aria-label="Remove task"
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -1180,7 +1197,7 @@ export function ConsultantTimesheetClient({
                                       }
                                     }}
                                     placeholder="Describe the task"
-                                    disabled={isSubmitted || isPending}
+                                    disabled={isReadOnly || isPending}
                                   />
                                 </div>
                                 <div className="grid gap-1">
@@ -1227,7 +1244,7 @@ export function ConsultantTimesheetClient({
                                         commitTaskDraft(index);
                                       }
                                     }}
-                                    disabled={isSubmitted || isPending}
+                                    disabled={isReadOnly || isPending}
                                   />
                                 </div>
                                 <div className="flex items-end justify-end gap-1">
@@ -1235,7 +1252,7 @@ export function ConsultantTimesheetClient({
                                     type="button"
                                     size="sm"
                                     onClick={() => commitTaskDraft(index)}
-                                    disabled={isSubmitted || isPending}
+                                    disabled={isReadOnly || isPending}
                                   >
                                     Enter
                                   </Button>
@@ -1244,7 +1261,7 @@ export function ConsultantTimesheetClient({
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => closeTaskDraft(index)}
-                                    disabled={isSubmitted || isPending}
+                                    disabled={isReadOnly || isPending}
                                     aria-label="Cancel task"
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -1314,7 +1331,7 @@ export function ConsultantTimesheetClient({
               onClick={saveDraft}
               disabled={
                 isPending ||
-                isSubmitted ||
+                isReadOnly ||
                 isActionBlocked
               }
             >
@@ -1325,7 +1342,7 @@ export function ConsultantTimesheetClient({
                 <Button
                   disabled={
                     isPending ||
-                    isSubmitted ||
+                    isReadOnly ||
                     isActionBlocked ||
                     totalHours <= 0
                   }

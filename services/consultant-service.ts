@@ -742,6 +742,14 @@ export const consultantService = {
     }
 
     const providedTimesheetId = getDatabaseTimesheetId(input.id);
+    const existingRecordById = providedTimesheetId
+      ? await findTimesheetById(consultantId, providedTimesheetId)
+      : null;
+
+    if (existingRecordById && normalizeTimesheetStatus(existingRecordById.status) !== "draft") {
+      throw new Error("This timesheet is locked and can no longer be edited.");
+    }
+
     const existingDraft = providedTimesheetId
       ? await findDraftTimesheetById(consultantId, providedTimesheetId)
       : null;
@@ -876,6 +884,14 @@ export const consultantService = {
     const submittedAt = submittedAtDate.toISOString();
     const submissionStatus = resolveSubmissionStatus(normalizedWeekStart, submittedAtDate);
     const providedTimesheetId = getDatabaseTimesheetId(input.id);
+    const existingRecordById = providedTimesheetId
+      ? await findTimesheetById(consultantId, providedTimesheetId)
+      : null;
+
+    if (existingRecordById && normalizeTimesheetStatus(existingRecordById.status) !== "draft") {
+      throw new Error("This timesheet is locked and can no longer be edited.");
+    }
+
     const existingDraft = providedTimesheetId
       ? await findDraftTimesheetById(consultantId, providedTimesheetId)
       : null;
