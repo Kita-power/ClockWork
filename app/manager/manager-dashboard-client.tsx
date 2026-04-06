@@ -1,8 +1,15 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useUser } from "@/hooks/use-user";
+import {
+  approveLeaveRequestAction,
+  approveTimesheetAction,
+  rejectLeaveRequestAction,
+  rejectTimesheetAction,
+} from "./actions";
 import {
   Tabs,
   TabsContent,
@@ -44,7 +51,7 @@ type TimesheetStatusFilter = "all" | LocalTimesheet["status"];
 type LeaveStatusFilter = "all" | LocalLeaveRequest["status"];
 
 function timesheetBadgeVariant(status: LocalTimesheet["status"]) {
-  if (status === "Overdue") return "destructive";
+  
   if (status === "Submitted Late" || status === "Approved Late") return "outline";
   if (status === "Approved" || status === "Processed") return "secondary";
   if (status === "Rejected") return "destructive";
@@ -60,16 +67,14 @@ function leaveBadgeVariant(status: LocalLeaveRequest["status"]) {
 function canApproveTimesheet(status: LocalTimesheet["status"]) {
   return (
     status === "Submitted" ||
-    status === "Submitted Late" ||
-    status === "Overdue"
+    status === "Submitted Late" 
   );
 }
 
 function canRejectTimesheet(status: LocalTimesheet["status"]) {
   return (
     status === "Submitted" ||
-    status === "Submitted Late" ||
-    status === "Overdue"
+    status === "Submitted Late" 
   );
 }
 
@@ -110,11 +115,20 @@ export function ManagerDashboardClient({
     initialTimesheets.map((t) => ({ ...t })),
   );
 
+  useEffect(() => {
+    setTimesheets(initialTimesheets.map((t) => ({ ...t })));
+  }, [initialTimesheets]);
+  
+  useEffect(() => {
+    setLeaveRequests(initialLeaveRequests.map((r) => ({ ...r })));
+  }, [initialLeaveRequests]);
+
   const [leaveRequests, setLeaveRequests] = useState<LocalLeaveRequest[]>(
     initialLeaveRequests.map((r) => ({ ...r })),
   );
 
   const { isAuthenticated, role, isLoading } = useUser();
+  const router = useRouter();
   const canManage = !isLoading && isAuthenticated && role === "manager";
 
   const [viewingTimesheetId, setViewingTimesheetId] = useState<string | null>(null);
@@ -242,28 +256,25 @@ export function ManagerDashboardClient({
     setTimesheetRejectComment("");
   }
 
-  function confirmApproveTimesheet() {
+  async function confirmApproveTimesheet() {
     if (!approvingTimesheetId) return;
 
-    setTimesheets((prev) =>
-      prev.map((t) =>
-        t.id === approvingTimesheetId
-          ? {
-              ...t,
-              status:
-                t.status === "Submitted Late" || t.status === "Overdue"
-                  ? "Approved Late"
-                  : "Approved",
-            }
-          : t,
-      ),
-    );
+    setTimesheetError(null);
+
+    const result = await approveTimesheetAction({
+      timesheetId: approvingTimesheetId,
+    });
+
+    if (!result.ok) {
+      setTimesheetError(result.error);
+      return;
+    }
 
     setApprovingTimesheetId(null);
-    setTimesheetError(null);
+    router.refresh();
   }
 
-  function confirmRejectTimesheet() {
+  async function confirmRejectTimesheet() {
     if (!rejectingTimesheetId) return;
 
     if (!timesheetRejectComment.trim()) {
@@ -271,21 +282,21 @@ export function ManagerDashboardClient({
       return;
     }
 
-    setTimesheets((prev) =>
-      prev.map((t) =>
-        t.id === rejectingTimesheetId
-          ? {
-              ...t,
-              status: "Rejected",
-              managerComment: timesheetRejectComment.trim(),
-            }
-          : t,
-      ),
-    );
+    setTimesheetError(null);
+
+    const result = await rejectTimesheetAction({
+      timesheetId: rejectingTimesheetId,
+      comment: timesheetRejectComment,
+    });
+
+    if (!result.ok) {
+      setTimesheetError(result.error);
+      return;
+    }
 
     setRejectingTimesheetId(null);
     setTimesheetRejectComment("");
-    setTimesheetError(null);
+    router.refresh();
   }
 
   function openApproveLeave(id: string) {
@@ -302,22 +313,25 @@ export function ManagerDashboardClient({
     setLeaveRejectComment("");
   }
 
-  function confirmApproveLeave() {
+  async function confirmApproveLeave() {
     if (!approvingLeaveId) return;
 
-    setLeaveRequests((prev) =>
-      prev.map((r) =>
-        r.id === approvingLeaveId
-          ? { ...r, status: "Approved" }
-          : r,
-      ),
-    );
+    setLeaveError(null);
+
+    const result = await approveLeaveRequestAction({
+      leaveRequestId: approvingLeaveId,
+    });
+
+    if (!result.ok) {
+      setLeaveError(result.error);
+      return;
+    }
 
     setApprovingLeaveId(null);
-    setLeaveError(null);
+    router.refresh();
   }
 
-  function confirmRejectLeave() {
+  async function confirmRejectLeave() {
     if (!rejectingLeaveId) return;
 
     if (!leaveRejectComment.trim()) {
@@ -325,21 +339,21 @@ export function ManagerDashboardClient({
       return;
     }
 
-    setLeaveRequests((prev) =>
-      prev.map((r) =>
-        r.id === rejectingLeaveId
-          ? {
-              ...r,
-              status: "Rejected",
-              managerComment: leaveRejectComment.trim(),
-            }
-          : r,
-      ),
-    );
+    setLeaveError(null);
+
+    const result = await rejectLeaveRequestAction({
+      leaveRequestId: rejectingLeaveId,
+      comment: leaveRejectComment,
+    });
+
+    if (!result.ok) {
+      setLeaveError(result.error);
+      return;
+    }
 
     setRejectingLeaveId(null);
     setLeaveRejectComment("");
-    setLeaveError(null);
+    router.refresh();
   }
 
   return (
@@ -366,6 +380,13 @@ export function ManagerDashboardClient({
               onChange={(e) => setTimesheetSearch(e.target.value)}
             />
 
+            {!isLoading && !canManage ? (
+              <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                You must be logged in as a <span className="font-semibold">manager</span> to
+                approve or reject timesheets and leave requests.
+              </div>
+            ) : null}
+
             <Tabs
               value={timesheetStatusFilter}
               onValueChange={(value) =>
@@ -376,9 +397,7 @@ export function ManagerDashboardClient({
                 <TabsTrigger value="all" className="flex-none">
                   All ({timesheetCounts.all})
                 </TabsTrigger>
-                <TabsTrigger value="Overdue" className="flex-none">
-                  Overdue ({timesheetCounts.byStatus.get("Overdue") ?? 0})
-                </TabsTrigger>
+                
                 <TabsTrigger value="Submitted" className="flex-none">
                   Submitted ({timesheetCounts.byStatus.get("Submitted") ?? 0})
                 </TabsTrigger>
@@ -394,9 +413,7 @@ export function ManagerDashboardClient({
                 <TabsTrigger value="Rejected" className="flex-none">
                   Rejected ({timesheetCounts.byStatus.get("Rejected") ?? 0})
                 </TabsTrigger>
-                <TabsTrigger value="Processed" className="flex-none">
-                  Processed ({timesheetCounts.byStatus.get("Processed") ?? 0})
-                </TabsTrigger>
+                
               </TabsList>
             </Tabs>
 
@@ -968,7 +985,7 @@ export function ManagerDashboardClient({
             : isAuthenticated
               ? `Logged in (${role ?? "unknown"})`
               : "Guest"}
-          . Manager actions are currently mock UI actions only.
+          
         </p>
       </CardContent>
     </Card>
