@@ -56,5 +56,13 @@ export function formatConsultantTimesheetStatusLabel(
     return "Submitted";
   }
 
+  if (displayStatus === "approved") {
+    return "Approved";
+  }
+
+  if (displayStatus === "rejected") {
+    return "Rejected";
+  }
+
   return "Draft";
 }

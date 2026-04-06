@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 
-export type TimesheetStatus = "draft" | "submitted" | "submitted_late";
+export type TimesheetStatus = "draft" | "submitted" | "submitted_late"| "approved" | "rejected" | "processed";
 
 export type WeeklyTimesheetTask = {
   id: string;
@@ -141,6 +141,18 @@ function normalizeTimesheetStatus(value: string | null | undefined): TimesheetSt
 
   if (value === "submitted_late") {
     return "submitted_late";
+  }
+
+  if (value === "approved") {
+    return "approved";
+  }
+
+  if (value === "rejected") {
+    return "rejected";
+  }
+
+  if (value === "processed") {
+    return "processed";
   }
 
   return "draft";
