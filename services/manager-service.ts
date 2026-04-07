@@ -351,14 +351,9 @@ export const managerService = {
     if (timesheetError) throw new Error(timesheetError.message);
     if (!timesheetRow) throw new Error("Timesheet not found");
 
-    await assertTimesheetBelongsToManager(
-      managerId,
-      (timesheetRow as { consultant_id: string }).consultant_id,
-    );
+    await assertTimesheetBelongsToManager(managerId, timesheetRow.consultant_id);
 
-    const currentStatus = String((timesheetRow as { status: string | null }).status ?? "")
-      .trim()
-      .toLowerCase();
+    const currentStatus = String(timesheetRow.status ?? "").trim().toLowerCase();
     const nextStatus = currentStatus === "submitted_late" ? "approved_late" : "approved";
 
     const { error } = await supabase
