@@ -98,16 +98,6 @@ function canRejectLeave(status: LocalLeaveRequest["status"]) {
   return status === "Pending";
 }
 
-function formatSubmittedAt(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString();
-}
-
 export function ManagerDashboardClient({
   initialTimesheets,
   initialLeaveRequests,
@@ -143,8 +133,6 @@ export function ManagerDashboardClient({
   const router = useRouter();
   const canManage = !isLoading && isAuthenticated && role === "manager";
 
-  const [viewingTimesheetId, setViewingTimesheetId] = useState<string | null>(null);
-
   const [approvingTimesheetId, setApprovingTimesheetId] = useState<string | null>(null);
   const [rejectingTimesheetId, setRejectingTimesheetId] = useState<string | null>(null);
 
@@ -156,11 +144,6 @@ export function ManagerDashboardClient({
 
   const [timesheetError, setTimesheetError] = useState<string | null>(null);
   const [leaveError, setLeaveError] = useState<string | null>(null);
-
-  const viewingTimesheet = useMemo(() => {
-    if (!viewingTimesheetId) return null;
-    return timesheets.find((t) => t.id === viewingTimesheetId) ?? null;
-  }, [viewingTimesheetId, timesheets]);
 
   const approvingTimesheet = useMemo(() => {
     if (!approvingTimesheetId) return null;
@@ -249,11 +232,10 @@ export function ManagerDashboardClient({
   }, [leaveRequests, leaveSearch, leaveStatusFilter]);
 
   function openViewTimesheet(id: string) {
-    setViewingTimesheetId(id);
+    router.push(`/manager/timesheet/${id}`);
   }
 
   function openApproveTimesheet(id: string) {
-    setViewingTimesheetId(null);
     setRejectingTimesheetId(null);
     setTimesheetRejectComment("");
     setTimesheetError(null);
@@ -261,7 +243,6 @@ export function ManagerDashboardClient({
   }
 
   function openRejectTimesheet(id: string) {
-    setViewingTimesheetId(null);
     setApprovingTimesheetId(null);
     setTimesheetError(null);
     setRejectingTimesheetId(id);
@@ -428,99 +409,6 @@ export function ManagerDashboardClient({
                 
               </TabsList>
             </Tabs>
-
-            {viewingTimesheet ? (
-              <div className="space-y-4 rounded-md border p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-base font-semibold">Timesheet Details</p>
-                    <p className="text-sm text-muted-foreground">
-                      Read-only view of the submitted weekly timesheet.
-                    </p>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setViewingTimesheetId(null)}
-                  >
-                    Close
-                  </Button>
-                </div>
-
-                <div className="grid gap-2 text-sm sm:grid-cols-2">
-                  <div>
-                    <span className="font-medium">Consultant:</span>{" "}
-                    {viewingTimesheet.consultantName}
-                  </div>
-                  <div>
-                    <span className="font-medium">Project:</span>{" "}
-                    {viewingTimesheet.projectCode}
-                  </div>
-                  <div>
-                    <span className="font-medium">Week:</span>{" "}
-                    {viewingTimesheet.weekStart} → {viewingTimesheet.weekEnd}
-                  </div>
-                  <div>
-                    <span className="font-medium">Total Hours:</span>{" "}
-                    {viewingTimesheet.totalHours}
-                  </div>
-                  <div>
-                    <span className="font-medium">Status:</span>{" "}
-                    {viewingTimesheet.status}
-                  </div>
-                  <div>
-                    <span className="font-medium">Submitted At:</span>{" "}
-                    {formatSubmittedAt(viewingTimesheet.submittedAt)}
-                  </div>
-                </div>
-
-                <div className="rounded-md border bg-muted/20 p-4">
-                  {viewingTimesheet.entries && viewingTimesheet.entries.length > 0 ? (
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium">Submitted Entries</p>
-
-                      <div className="rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Day</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead className="text-right">Hours</TableHead>
-                              <TableHead>Description</TableHead>
-                            </TableRow>
-                          </TableHeader>
-
-                          <TableBody>
-                            {viewingTimesheet.entries.map((entry, index) => (
-                              <TableRow key={`${entry.date}-${index}`}>
-                                <TableCell>{entry.dayLabel}</TableCell>
-                                <TableCell>{entry.date}</TableCell>
-                                <TableCell className="text-right">
-                                  {entry.hours}
-                                </TableCell>
-                                <TableCell>{entry.description}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">
-                        No timesheet entries available yet
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        This view will show the consultant&apos;s submitted weekly
-                        timesheet once the consultant-side create weekly timesheet
-                        feature has been connected.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : null}
 
             {approvingTimesheet ? (
               <div className="space-y-3 rounded-md border p-4">

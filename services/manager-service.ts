@@ -59,6 +59,17 @@ type DbTimesheetRow = {
 
 type DbProjectRow = { id: string; code: string };
 
+type DbTimeEntryRow = {
+  entry_date: string;
+  hours: number | string | null;
+  notes: string | null;
+};
+
+type DbTimesheetCommentRow = {
+  body: string;
+  created_at: string | null;
+};
+
 type DbLeaveRequestRow = {
   id: string;
   consultant_id: string;
@@ -102,6 +113,7 @@ function mapTimesheetStatus(row: DbTimesheetRow): ManagerTimesheetSummary["statu
 
   
   if (row.processed_at || v === "processed") return "Processed";
+  if (v === "approved_late") return "Approved Late";
   if (v === "approved") return "Approved";
   if (v === "rejected") return "Rejected";
   if (v === "submitted_late") return "Submitted Late";
@@ -110,6 +122,40 @@ function mapTimesheetStatus(row: DbTimesheetRow): ManagerTimesheetSummary["statu
 
   
   return "Submitted";
+}
+
+function parseEntryDescription(notes: string | null): string {
+  if (!notes) return "";
+
+  try {
+    const parsed = JSON.parse(notes) as {
+      text?: unknown;
+      tasks?: Array<{ title?: unknown }>;
+    };
+
+    const text = typeof parsed?.text === "string" ? parsed.text.trim() : "";
+    const taskTitles = Array.isArray(parsed?.tasks)
+      ? parsed.tasks
+          .map((task) => (typeof task?.title === "string" ? task.title.trim() : ""))
+          .filter((title) => title.length > 0)
+      : [];
+
+    if (text.length > 0 && taskTitles.length > 0) {
+      return `${text}\nTasks: ${taskTitles.join(", ")}`;
+    }
+
+    if (text.length > 0) {
+      return text;
+    }
+
+    if (taskTitles.length > 0) {
+      return `Tasks: ${taskTitles.join(", ")}`;
+    }
+  } catch {
+    // fall through to plain-text note
+  }
+
+  return notes;
 }
 
 async function getAuthenticatedManagerId(): Promise<string | null> {
@@ -135,6 +181,18 @@ async function listTeamConsultants(managerId: string): Promise<DbUserRow[]> {
 
   if (error) throw new Error(error.message);
   return (data ?? []) as DbUserRow[];
+}
+
+async function assertTimesheetBelongsToManager(
+  managerId: string,
+  consultantId: string,
+): Promise<void> {
+  const consultants = await listTeamConsultants(managerId);
+  const managedConsultantIds = new Set(consultants.map((consultant) => consultant.id));
+
+  if (!managedConsultantIds.has(consultantId)) {
+    throw new Error("Timesheet not found");
+  }
 }
 
 async function projectCodeById(projectIds: string[]): Promise<Map<string, string>> {
@@ -178,7 +236,14 @@ export const managerService = {
     
     const managerVisibleRows = rows.filter((row) => {
       const v = String(row.status ?? "").trim().toLowerCase();
-      return v === "submitted" || v === "approved" || v === "rejected" || v === "processed" || v === "submitted_late";
+      return (
+        v === "submitted" ||
+        v === "submitted_late" ||
+        v === "approved" ||
+        v === "approved_late" ||
+        v === "rejected" ||
+        v === "processed"
+      );
     });
 
     const projectIds = Array.from(
@@ -198,16 +263,107 @@ export const managerService = {
     }));
   },
 
+  async getTimesheetById(timesheetId: string): Promise<ManagerTimesheetSummary> {
+    const managerId = await getAuthenticatedManagerId();
+    if (!managerId) {
+      throw new Error("Timesheet not found");
+    }
+
+    const supabase = await createClient();
+    const { data: timesheetRow, error: timesheetError } = await supabase
+      .from("timesheets")
+      .select(
+        "id, consultant_id, project_id, week_start_date, week_end_date, status, total_hours, submitted_at, approved_at, processed_at, created_at, updated_at",
+      )
+      .eq("id", timesheetId)
+      .maybeSingle();
+
+    if (timesheetError) throw new Error(timesheetError.message);
+    if (!timesheetRow) throw new Error("Timesheet not found");
+
+    const typedRow = timesheetRow as DbTimesheetRow;
+    await assertTimesheetBelongsToManager(managerId, typedRow.consultant_id);
+
+    const [{ data: consultantRow, error: consultantError }, codeByProjectId, entriesQuery, commentsQuery] =
+      await Promise.all([
+        supabase
+          .from("users")
+          .select("id, full_name")
+          .eq("id", typedRow.consultant_id)
+          .maybeSingle(),
+        projectCodeById(typedRow.project_id ? [typedRow.project_id] : []),
+        supabase
+          .from("time_entries")
+          .select("entry_date, hours, notes")
+          .eq("timesheet_id", typedRow.id)
+          .order("entry_date", { ascending: true }),
+        supabase
+          .from("timesheet_comments")
+          .select("body, created_at")
+          .eq("timesheet_id", typedRow.id)
+          .order("created_at", { ascending: false })
+          .limit(1),
+      ]);
+
+    if (consultantError) throw new Error(consultantError.message);
+    if (entriesQuery.error) throw new Error(entriesQuery.error.message);
+    if (commentsQuery.error) throw new Error(commentsQuery.error.message);
+
+    const rawEntries = (entriesQuery.data ?? []) as DbTimeEntryRow[];
+    const entries: TimesheetEntry[] = rawEntries.map((entry) => ({
+      dayLabel: new Date(`${entry.entry_date}T00:00:00`).toLocaleDateString("en-US", {
+        weekday: "short",
+      }),
+      date: entry.entry_date,
+      hours: toNumber(entry.hours),
+      description: parseEntryDescription(entry.notes),
+    }));
+
+    const latestComment = ((commentsQuery.data ?? []) as DbTimesheetCommentRow[])[0];
+
+    return {
+      id: typedRow.id,
+      consultantName: (consultantRow as { id: string; full_name: string } | null)?.full_name ?? "Unknown",
+      projectCode: typedRow.project_id ? codeByProjectId.get(typedRow.project_id) ?? "" : "",
+      weekStart: typedRow.week_start_date,
+      weekEnd: typedRow.week_end_date,
+      totalHours: toNumber(typedRow.total_hours),
+      status: mapTimesheetStatus(typedRow),
+      submittedAt:
+        typedRow.submitted_at ?? typedRow.updated_at ?? typedRow.created_at ?? new Date().toISOString(),
+      entries,
+      managerComment: latestComment?.body ?? undefined,
+    };
+  },
+
   async approveTimesheet(timesheetId: string): Promise<void> {
     const managerId = await getAuthenticatedManagerId();
     if (!managerId) throw new Error("Not authenticated.");
 
     const supabase = await createClient();
     const now = new Date().toISOString();
+    const { data: timesheetRow, error: timesheetError } = await supabase
+      .from("timesheets")
+      .select("consultant_id, status")
+      .eq("id", timesheetId)
+      .maybeSingle();
+
+    if (timesheetError) throw new Error(timesheetError.message);
+    if (!timesheetRow) throw new Error("Timesheet not found");
+
+    await assertTimesheetBelongsToManager(
+      managerId,
+      (timesheetRow as { consultant_id: string }).consultant_id,
+    );
+
+    const currentStatus = String((timesheetRow as { status: string | null }).status ?? "")
+      .trim()
+      .toLowerCase();
+    const nextStatus = currentStatus === "submitted_late" ? "approved_late" : "approved";
 
     const { error } = await supabase
       .from("timesheets")
-      .update({ status: "approved", approved_at: now, updated_at: now })
+      .update({ status: nextStatus, approved_at: now, updated_at: now })
       .eq("id", timesheetId);
 
     if (error) throw new Error(error.message);
