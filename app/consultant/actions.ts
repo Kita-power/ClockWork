@@ -22,7 +22,21 @@ type CreateTimesheetResult =
   | { ok: false; error: string };
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) {
+    const message = error.message;
+    const normalizedMessage = message.toLowerCase();
+
+    if (
+      normalizedMessage.includes("timesheets_unique_consultant_week_project") ||
+      (normalizedMessage.includes("duplicate key value") &&
+        normalizedMessage.includes("unique constraint"))
+    ) {
+      return "A timesheet for this week and project code already exists. Open the existing timesheet to update it instead of creating another one.";
+    }
+
+    return message;
+  }
+
   return "Unexpected error";
 }
 
