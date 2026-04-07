@@ -210,6 +210,22 @@ export function ManagerDashboardClient({
       return matchesSearch && matchesStatus;
     });
   }, [timesheets, timesheetSearch, timesheetStatusFilter]);
+  const timesheetsNeedingApproval = useMemo(
+    () =>
+      filteredTimesheets.filter(
+        (timesheet) =>
+          timesheet.status === "Submitted" || timesheet.status === "Submitted Late",
+      ),
+    [filteredTimesheets],
+  );
+  const otherFilteredTimesheets = useMemo(
+    () =>
+      filteredTimesheets.filter(
+        (timesheet) =>
+          timesheet.status !== "Submitted" && timesheet.status !== "Submitted Late",
+      ),
+    [filteredTimesheets],
+  );
 
   const filteredLeaveRequests = useMemo(() => {
     const q = leaveSearch.trim().toLowerCase();
@@ -545,97 +561,174 @@ export function ManagerDashboardClient({
               </div>
             ) : null}
 
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Consultant</TableHead>
-                    <TableHead>Project</TableHead>
-                    <TableHead>Week</TableHead>
-                    <TableHead className="text-right">Hours</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-
-                <TableBody>
-                  {filteredTimesheets.map((t) => (
-                    <TableRow key={t.id}>
-                      <TableCell className="font-medium">
-                        {t.consultantName}
-                      </TableCell>
-
-                      <TableCell className="font-mono text-xs">
-                        {t.projectCode}
-                      </TableCell>
-
-                      <TableCell className="text-sm text-muted-foreground">
-                        {t.weekStart} → {t.weekEnd}
-                      </TableCell>
-
-                      <TableCell className="text-right">
-                        {t.totalHours}
-                      </TableCell>
-
-                      <TableCell>
-                        <Badge variant="outline" className={getTimesheetBadgeClassName(t.status)}>
-                          {t.status}
-                        </Badge>
-
-                        {t.status === "Rejected" && t.managerComment ? (
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            <span className="font-medium">Comment:</span>
-                            <div className="mt-1 max-h-16 overflow-auto whitespace-pre-wrap break-words rounded border bg-muted/30 p-2">
-                              {t.managerComment}
-                            </div>
-                          </div>
-                        ) : null}
-                      </TableCell>
-
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openViewTimesheet(t.id)}
-                          >
-                            View
-                          </Button>
-
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => openApproveTimesheet(t.id)}
-                            disabled={!canManage || !canApproveTimesheet(t.status)}
-                          >
-                            Approve
-                          </Button>
-
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => openRejectTimesheet(t.id)}
-                            disabled={!canManage || !canRejectTimesheet(t.status)}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-
-                  {filteredTimesheets.length === 0 ? (
+            <div className="space-y-4">
+              <div className="rounded-md border border-amber-500/30">
+                <div className="flex items-center justify-between border-b bg-amber-500/10 px-4 py-3">
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                    Needs Approval
+                  </p>
+                  <Badge variant="outline" className="border-amber-600/30 bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                    {timesheetsNeedingApproval.length}
+                  </Badge>
+                </div>
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-muted-foreground">
-                        No timesheets found.
-                      </TableCell>
+                      <TableHead>Consultant</TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Week</TableHead>
+                      <TableHead className="text-right">Hours</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {timesheetsNeedingApproval.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-muted-foreground">
+                          No timesheets currently need approval.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      timesheetsNeedingApproval.map((t) => (
+                        <TableRow key={t.id}>
+                          <TableCell className="font-medium">{t.consultantName}</TableCell>
+                          <TableCell className="font-mono text-xs">{t.projectCode}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {t.weekStart} → {t.weekEnd}
+                          </TableCell>
+                          <TableCell className="text-right">{t.totalHours}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={getTimesheetBadgeClassName(t.status)}>
+                              {t.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openViewTimesheet(t.id)}
+                              >
+                                View
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => openApproveTimesheet(t.id)}
+                                disabled={!canManage || !canApproveTimesheet(t.status)}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => openRejectTimesheet(t.id)}
+                                disabled={!canManage || !canRejectTimesheet(t.status)}
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="rounded-md border">
+                <div className="border-b px-4 py-3">
+                  <p className="text-sm font-semibold">Other Timesheets</p>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Consultant</TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Week</TableHead>
+                      <TableHead className="text-right">Hours</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody>
+                    {otherFilteredTimesheets.map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell className="font-medium">{t.consultantName}</TableCell>
+                        <TableCell className="font-mono text-xs">{t.projectCode}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {t.weekStart} → {t.weekEnd}
+                        </TableCell>
+                        <TableCell className="text-right">{t.totalHours}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={getTimesheetBadgeClassName(t.status)}>
+                            {t.status}
+                          </Badge>
+
+                          {t.status === "Rejected" && t.managerComment ? (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              <span className="font-medium">Comment:</span>
+                              <div className="mt-1 max-h-16 overflow-auto whitespace-pre-wrap break-words rounded border bg-muted/30 p-2">
+                                {t.managerComment}
+                              </div>
+                            </div>
+                          ) : null}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openViewTimesheet(t.id)}
+                            >
+                              View
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => openApproveTimesheet(t.id)}
+                              disabled={!canManage || !canApproveTimesheet(t.status)}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => openRejectTimesheet(t.id)}
+                              disabled={!canManage || !canRejectTimesheet(t.status)}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+
+                    {filteredTimesheets.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-muted-foreground">
+                          No timesheets found.
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                    {filteredTimesheets.length > 0 && otherFilteredTimesheets.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-muted-foreground">
+                          No other timesheets in this filter.
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </TabsContent>
 
