@@ -312,7 +312,7 @@ function formatDate(date: string): string {
 }
 
 function getStatusBadgeClassName(status: string): string {
-  if (status === "approved") {
+  if (status === "approved" || status === "approved_late") {
     return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
   }
   if (status === "processed") {
@@ -381,11 +381,12 @@ export function ConsultantTimesheetClient({
     timesheet.status === "submitted" ||
     timesheet.status === "submitted_late" ||
     timesheet.status === "approved" ||
+    timesheet.status === "approved_late" ||
     timesheet.status === "rejected";
   const displayStatus = getConsultantTimesheetDisplayStatus(timesheet.status, timesheet.weekStart);
   const statusLabel = formatConsultantTimesheetStatusLabel(timesheet.status, timesheet.weekStart);
   const readOnlyMessage =
-    timesheet.status === "approved"
+    timesheet.status === "approved" || timesheet.status === "approved_late"
       ? "This timesheet has been approved and is now read-only."
       : timesheet.status === "rejected"
         ? "This timesheet has been rejected and is now read-only."
@@ -965,6 +966,13 @@ export function ConsultantTimesheetClient({
             <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700">
               {readOnlyMessage}
             </p>
+          ) : null}
+
+          {timesheet.status === "rejected" && timesheet.managerComment ? (
+            <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-700">
+              <p className="font-medium">Manager rejection comment</p>
+              <p className="mt-1 whitespace-pre-wrap">{timesheet.managerComment}</p>
+            </div>
           ) : null}
 
           <div className="grid gap-3 sm:max-w-xs">

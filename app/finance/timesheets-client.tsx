@@ -20,6 +20,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { FinanceTimesheetRecord } from "@/services/finance-service";
+import { markTimesheetProcessedAction } from "./actions";
 
 function toUiStatus(status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
@@ -55,6 +56,7 @@ export function FinanceTimesheetsClient({
   const [query, setQuery] = useState("");
   const [selectedTimesheetId, setSelectedTimesheetId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
+  const [processingTimesheetId, setProcessingTimesheetId] = useState<string | null>(null);
 
   const filteredTimesheets = timesheets.filter((timesheet) => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -68,9 +70,20 @@ export function FinanceTimesheetsClient({
   const selectedTimesheet = timesheets.find((ts) => ts.id === selectedTimesheetId) ?? null;
 
   const handleMarkAsProcessed = async (timesheetId: string) => {
-    // TODO: Call financeService.markAsProcessed(timesheetId)
-    console.log("Mark as processed:", timesheetId);
-    alert("This will mark timesheet as processed (to be implemented)");
+    setErrorMessage(null);
+    setProcessingTimesheetId(timesheetId);
+
+    const result = await markTimesheetProcessedAction({ timesheetId });
+
+    if (!result.ok) {
+      setErrorMessage(result.error);
+      setProcessingTimesheetId(null);
+      return;
+    }
+
+    setSelectedTimesheetId(null);
+    setProcessingTimesheetId(null);
+    router.refresh();
   };
 
   const handleExport = () => {
@@ -198,9 +211,12 @@ export function FinanceTimesheetsClient({
 
               <Button
                 type="button"
+                disabled={processingTimesheetId === selectedTimesheet.id}
                 onClick={() => handleMarkAsProcessed(selectedTimesheet.id)}
               >
-                Mark as Processed
+                {processingTimesheetId === selectedTimesheet.id
+                  ? "Marking as Processed..."
+                  : "Mark as Processed"}
               </Button>
             </div>
           ) : null}

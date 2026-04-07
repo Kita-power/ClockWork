@@ -63,7 +63,7 @@ function truncateTimesheetId(id: string): string {
 }
 
 function getStatusBadgeClassName(status: string): string {
-  if (status === "approved") {
+  if (status === "approved" || status === "approved_late") {
     return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
   }
   if (status === "processed") {

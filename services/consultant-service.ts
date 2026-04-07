@@ -3,7 +3,14 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 
-export type TimesheetStatus = "draft" | "submitted" | "submitted_late"| "approved" | "rejected" | "processed";
+export type TimesheetStatus =
+  | "draft"
+  | "submitted"
+  | "submitted_late"
+  | "approved"
+  | "approved_late"
+  | "rejected"
+  | "processed";
 
 export type WeeklyTimesheetTask = {
   id: string;
@@ -26,6 +33,7 @@ export type WeeklyTimesheetRecord = {
   weekEnd: string;
   status: TimesheetStatus;
   entries: WeeklyTimesheetEntry[];
+  managerComment?: string;
 };
 
 export type TimesheetSummaryRecord = {
@@ -81,6 +89,11 @@ type SupabaseProjectRow = {
   id: string;
   code: string;
   name: string;
+};
+
+type SupabaseTimesheetCommentRow = {
+  body: string;
+  created_at: string | null;
 };
 
 type SerializedTimeEntryNotes = {
@@ -145,6 +158,10 @@ function normalizeTimesheetStatus(value: string | null | undefined): TimesheetSt
 
   if (value === "approved") {
     return "approved";
+  }
+
+  if (value === "approved_late") {
+    return "approved_late";
   }
 
   if (value === "rejected") {
@@ -261,6 +278,7 @@ function toWeeklyRecordFromDb(
   row: SupabaseTimesheetRow,
   entries: SupabaseTimeEntryRow[],
   projectCodeById: Map<string, string>,
+  managerComment?: string,
 ): WeeklyTimesheetRecord {
   const weekEntries = buildWeekEntries(row.week_start_date);
 
@@ -287,6 +305,7 @@ function toWeeklyRecordFromDb(
     weekEnd: row.week_end_date,
     status: normalizeTimesheetStatus(row.status),
     entries: weekEntries,
+    managerComment,
   };
 }
 
@@ -523,6 +542,25 @@ async function fetchProjectCodesByIds(
   return new Map(projects.map((project) => [project.id, project.code]));
 }
 
+async function fetchLatestManagerCommentForTimesheet(
+  timesheetId: string,
+): Promise<string | undefined> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("timesheet_comments")
+    .select("body, created_at")
+    .eq("timesheet_id", timesheetId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const latestComment = ((data ?? []) as SupabaseTimesheetCommentRow[])[0];
+  return latestComment?.body ?? undefined;
+}
+
 function normalizeSubmittedEntries(
   entries: WeeklyTimesheetEntry[],
 ): WeeklyTimesheetEntry[] {
@@ -699,11 +737,14 @@ export const consultantService = {
 
     const record = await findTimesheetById(consultantId, timesheetId);
     if (record) {
-      const entries = await fetchSubmittedTimesheetEntries(record.id);
+      const [entries, managerComment] = await Promise.all([
+        fetchSubmittedTimesheetEntries(record.id),
+        fetchLatestManagerCommentForTimesheet(record.id),
+      ]);
       const projectIds = Array.from(new Set(entries.map((entry) => entry.project_id)));
       const projectCodeById = await fetchProjectCodesByIds(projectIds);
 
-      return toWeeklyRecordFromDb(record, entries, projectCodeById);
+      return toWeeklyRecordFromDb(record, entries, projectCodeById, managerComment);
     }
 
     throw new Error("Timesheet not found");

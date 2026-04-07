@@ -42,13 +42,14 @@ export function createTimesheetApprovedNotification(input: {
   projectCode: string;
   weekStart: string;
   weekEnd: string;
+  isLate?: boolean;
 }): StoredNotification {
   const weekRangeText = `${formatDateForNotification(input.weekStart)} to ${formatDateForNotification(input.weekEnd)}`;
 
   return {
     id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
-    title: "Timesheet Approved",
-    description: `Your timesheet for project code ${input.projectCode} for the week of ${weekRangeText} has been approved by your manager.`,
+    title: input.isLate ? "Timesheet Approved Late" : "Timesheet Approved",
+    description: `Your timesheet for project code ${input.projectCode} for the week of ${weekRangeText} has been ${input.isLate ? "approved as a late submission" : "approved"} by your manager.`,
     timestamp: new Date().toISOString(),
     read: false,
   };

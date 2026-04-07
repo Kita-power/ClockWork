@@ -99,6 +99,7 @@ export function RoleTopbarLayout({
 }: RoleTopbarLayoutProps) {
   const pathname = usePathname();
   const overviewPath = overviewHref ?? pathname;
+  const navItems = [{ label: "Overview", href: overviewPath }];
   const tabsValue = pathname.startsWith(overviewPath) ? overviewPath : pathname;
   const isOverviewPage = pathname === overviewPath;
   const { id: userId, fullName, email, role, isLoading, isAuthenticated } = useUser();
@@ -148,7 +149,11 @@ export function RoleTopbarLayout({
         return;
       }
 
-      if (normalizedStatus !== "approved" && normalizedStatus !== "rejected") {
+      if (
+        normalizedStatus !== "approved" &&
+        normalizedStatus !== "approved_late" &&
+        normalizedStatus !== "rejected"
+      ) {
         return;
       }
 
@@ -174,12 +179,13 @@ export function RoleTopbarLayout({
         return;
       }
 
-      if (normalizedStatus === "approved") {
+      if (normalizedStatus === "approved" || normalizedStatus === "approved_late") {
         appendNotification(
           createTimesheetApprovedNotification({
             projectCode,
             weekStart: row.week_start_date,
             weekEnd: row.week_end_date,
+            isLate: normalizedStatus === "approved_late",
           }),
         );
       }
@@ -317,15 +323,19 @@ export function RoleTopbarLayout({
           <div className="min-w-0">
             <h1 className="text-3xl font-semibold tracking-tight">Clockwork</h1>
             <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-            <Tabs value={tabsValue} className="mt-3">
-              <TabsList>
-                <TabsTrigger value={overviewPath} asChild>
-                  <Link href={overviewPath} prefetch={false}>
-                    Overview
-                  </Link>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {navItems.length > 1 ? (
+              <Tabs value={tabsValue} className="mt-3">
+                <TabsList>
+                  {navItems.map((item) => (
+                    <TabsTrigger key={item.href} value={item.href} asChild>
+                      <Link href={item.href} prefetch={false}>
+                        {item.label}
+                      </Link>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            ) : null}
           </div>
 
           <div className="flex flex-col items-end gap-2">
