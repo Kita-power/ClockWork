@@ -25,9 +25,12 @@ export default function ProtectedLayout({
             {!hasEnvVars ? (
               <EnvVarWarning />
             ) : (
-              <Suspense>
-                <AuthButton />
-              </Suspense>
+              <div className="flex items-center gap-2">
+                <ThemeSwitcher />
+                <Suspense>
+                  <AuthButton />
+                </Suspense>
+              </div>
             )}
           </div>
         </nav>
@@ -47,7 +50,6 @@ export default function ProtectedLayout({
               Supabase
             </a>
           </p>
-          <ThemeSwitcher />
         </footer>
       </div>
     </main>

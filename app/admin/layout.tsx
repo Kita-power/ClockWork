@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useUser } from "@/hooks/use-user";
 import { formatRoleLabel } from "@/lib/format-role-label";
 import { TopbarUserMenu } from "@/components/topbar-user-menu";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -42,6 +43,7 @@ export default function AdminLayout({
 
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
+              <ThemeSwitcher />
               {isLoading ? (
                 <p className="text-sm font-semibold text-muted-foreground">Loading…</p>
               ) : isAuthenticated ? (

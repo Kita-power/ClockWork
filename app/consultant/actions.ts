@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { consultantService } from "@/services";
+import { logAuditFailure, logAuditSuccess } from "@/lib/audit-log";
 import type {
   SaveTimesheetInput,
   TimesheetStatus,
@@ -52,9 +53,22 @@ export async function saveConsultantTimesheetDraftAction(
 ): Promise<ActionResult> {
   try {
     const result = await consultantService.saveWeeklyTimesheetDraft(input);
+    await logAuditSuccess({
+      action: "consultant.timesheet.save_draft",
+      entityType: "timesheet",
+      entityId: result.timesheetId,
+      metadata: { weekStart: input.weekStart },
+    });
     revalidatePath("/consultant");
+    revalidatePath("/admin/audit-logs");
     return { ok: true, message: "Draft saved", timesheetId: result.timesheetId };
   } catch (error) {
+    await logAuditFailure({
+      action: "consultant.timesheet.save_draft",
+      entityType: "timesheet",
+      metadata: { weekStart: input.weekStart },
+      error,
+    });
     return { ok: false, error: getErrorMessage(error) };
   }
 }
@@ -64,7 +78,14 @@ export async function submitConsultantTimesheetAction(
 ): Promise<ActionResult> {
   try {
     const result = await consultantService.submitWeeklyTimesheet(input);
+    await logAuditSuccess({
+      action: "consultant.timesheet.submit",
+      entityType: "timesheet",
+      entityId: result.timesheetId,
+      metadata: { weekStart: input.weekStart, status: result.status },
+    });
     revalidatePath("/consultant");
+    revalidatePath("/admin/audit-logs");
     return {
       ok: true,
       message:
@@ -75,6 +96,12 @@ export async function submitConsultantTimesheetAction(
       status: result.status,
     };
   } catch (error) {
+    await logAuditFailure({
+      action: "consultant.timesheet.submit",
+      entityType: "timesheet",
+      metadata: { weekStart: input.weekStart },
+      error,
+    });
     return { ok: false, error: getErrorMessage(error) };
   }
 }
@@ -94,9 +121,21 @@ export async function deleteConsultantDraftTimesheetAction(
 ): Promise<ActionResult> {
   try {
     await consultantService.deleteDraftTimesheet(timesheetId);
+    await logAuditSuccess({
+      action: "consultant.timesheet.delete_draft",
+      entityType: "timesheet",
+      entityId: timesheetId,
+    });
     revalidatePath("/consultant");
+    revalidatePath("/admin/audit-logs");
     return { ok: true, message: "Draft timesheet deleted" };
   } catch (error) {
+    await logAuditFailure({
+      action: "consultant.timesheet.delete_draft",
+      entityType: "timesheet",
+      entityId: timesheetId,
+      error,
+    });
     return { ok: false, error: getErrorMessage(error) };
   }
 }

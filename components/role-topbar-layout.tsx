@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationButton } from "@/components/ui/notif-button";
 import type { Notification } from "@/components/ui/notif-button";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { useUser } from "@/hooks/use-user";
 import { formatRoleLabel } from "@/lib/format-role-label";
 import { createClient } from "@/lib/supabase/client";
@@ -340,6 +341,7 @@ export function RoleTopbarLayout({
 
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
+              <ThemeSwitcher />
               {isLoading ? (
                 <p className="text-sm font-semibold text-muted-foreground">Loading…</p>
               ) : isAuthenticated ? (
@@ -373,7 +375,11 @@ export function RoleTopbarLayout({
       </header>
 
       <div className="mx-auto flex w-full max-w-[1400px] min-h-0 flex-1 flex-col overflow-hidden px-3 py-6 md:px-5 md:py-8">
-        <section className={`min-h-0 flex-1 ${isOverviewPage ? "overflow-hidden" : "overflow-y-auto"}`}>
+        <section
+          className={`min-h-0 flex-1 ${
+            isOverviewPage ? "overflow-y-auto md:overflow-hidden" : "overflow-y-auto"
+          }`}
+        >
           {children}
         </section>
       </div>

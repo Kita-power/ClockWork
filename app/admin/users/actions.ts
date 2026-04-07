@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { adminService } from "@/services";
+import { logAuditFailure, logAuditSuccess } from "@/lib/audit-log";
 
 type ActionResult =
   | { ok: true; temporaryPassword?: string; email?: string }
@@ -79,9 +80,30 @@ export async function createAdminUserAction(input: {
       throw new Error("Failed to create auth user");
     }
 
+    await logAuditSuccess({
+      action: "admin.user.create",
+      entityType: "user",
+      entityId: createdAuthUser.user.id,
+      metadata: {
+        targetEmail: input.email.trim().toLowerCase(),
+        targetRole: input.role.trim().toLowerCase(),
+        managerId: input.managerId ?? null,
+      },
+    });
+
     revalidatePath("/admin/users");
+    revalidatePath("/admin/audit-logs");
     return { ok: true, temporaryPassword };
   } catch (error) {
+    await logAuditFailure({
+      action: "admin.user.create",
+      entityType: "user",
+      metadata: {
+        targetEmail: input.email.trim().toLowerCase(),
+        targetRole: input.role.trim().toLowerCase(),
+      },
+      error,
+    });
     return { ok: false, error: getErrorMessage(error) };
   }
 }
@@ -107,9 +129,23 @@ export async function resetAdminUserPasswordAction(input: {
       throw new Error("Could not read user email after password update");
     }
 
+    await logAuditSuccess({
+      action: "admin.user.reset_password",
+      entityType: "user",
+      entityId: input.userId,
+      metadata: { targetEmail: email },
+    });
+
     revalidatePath("/admin/users");
+    revalidatePath("/admin/audit-logs");
     return { ok: true, temporaryPassword, email };
   } catch (error) {
+    await logAuditFailure({
+      action: "admin.user.reset_password",
+      entityType: "user",
+      entityId: input.userId,
+      error,
+    });
     return { ok: false, error: getErrorMessage(error) };
   }
 }
@@ -120,9 +156,23 @@ export async function setAdminUserActiveAction(input: {
 }): Promise<ActionResult> {
   try {
     await adminService.setUserActive(input.userId, input.isActive);
+    await logAuditSuccess({
+      action: input.isActive ? "admin.user.activate" : "admin.user.deactivate",
+      entityType: "user",
+      entityId: input.userId,
+      metadata: { isActive: input.isActive },
+    });
     revalidatePath("/admin/users");
+    revalidatePath("/admin/audit-logs");
     return { ok: true };
   } catch (error) {
+    await logAuditFailure({
+      action: input.isActive ? "admin.user.activate" : "admin.user.deactivate",
+      entityType: "user",
+      entityId: input.userId,
+      metadata: { isActive: input.isActive },
+      error,
+    });
     return { ok: false, error: getErrorMessage(error) };
   }
 }

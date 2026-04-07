@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { adminService } from "@/services";
+import { logAuditFailure, logAuditSuccess } from "@/lib/audit-log";
 
 type ActionResult =
   | { ok: true }
@@ -43,9 +44,25 @@ export async function createAdminProjectAction(input: {
       code: input.code,
       consultantIds: input.consultantIds ?? [],
     });
+    await logAuditSuccess({
+      action: "admin.project.create",
+      entityType: "project",
+      metadata: {
+        code: input.code.trim(),
+        name: input.name.trim(),
+        consultantIds: input.consultantIds ?? [],
+      },
+    });
     revalidatePath("/admin/projects");
+    revalidatePath("/admin/audit-logs");
     return { ok: true };
   } catch (error) {
+    await logAuditFailure({
+      action: "admin.project.create",
+      entityType: "project",
+      metadata: { code: input.code.trim(), name: input.name.trim() },
+      error,
+    });
     return { ok: false, error: getErrorMessage(error) };
   }
 }
@@ -56,9 +73,23 @@ export async function setAdminProjectActiveAction(input: {
 }): Promise<ActionResult> {
   try {
     await adminService.setProjectActive(input.projectId, input.isActive);
+    await logAuditSuccess({
+      action: input.isActive ? "admin.project.activate" : "admin.project.deactivate",
+      entityType: "project",
+      entityId: input.projectId,
+      metadata: { isActive: input.isActive },
+    });
     revalidatePath("/admin/projects");
+    revalidatePath("/admin/audit-logs");
     return { ok: true };
   } catch (error) {
+    await logAuditFailure({
+      action: input.isActive ? "admin.project.activate" : "admin.project.deactivate",
+      entityType: "project",
+      entityId: input.projectId,
+      metadata: { isActive: input.isActive },
+      error,
+    });
     return { ok: false, error: getErrorMessage(error) };
   }
 }
@@ -72,9 +103,29 @@ export async function assignConsultantToProjectAction(input: {
       input.projectId,
       input.consultantId,
     );
+    await logAuditSuccess({
+      action: "admin.project.assign_consultant",
+      entityType: "project_assignment",
+      entityId: input.projectId,
+      metadata: {
+        projectId: input.projectId,
+        consultantId: input.consultantId,
+      },
+    });
     revalidatePath("/admin/projects");
+    revalidatePath("/admin/audit-logs");
     return { ok: true };
   } catch (error) {
+    await logAuditFailure({
+      action: "admin.project.assign_consultant",
+      entityType: "project_assignment",
+      entityId: input.projectId,
+      metadata: {
+        projectId: input.projectId,
+        consultantId: input.consultantId,
+      },
+      error,
+    });
     return { ok: false, error: getErrorMessage(error) };
   }
 }
@@ -99,9 +150,29 @@ export async function removeConsultantFromProjectAction(input: {
       input.projectId,
       input.consultantId,
     );
+    await logAuditSuccess({
+      action: "admin.project.remove_consultant",
+      entityType: "project_assignment",
+      entityId: input.projectId,
+      metadata: {
+        projectId: input.projectId,
+        consultantId: input.consultantId,
+      },
+    });
     revalidatePath("/admin/projects");
+    revalidatePath("/admin/audit-logs");
     return { ok: true };
   } catch (error) {
+    await logAuditFailure({
+      action: "admin.project.remove_consultant",
+      entityType: "project_assignment",
+      entityId: input.projectId,
+      metadata: {
+        projectId: input.projectId,
+        consultantId: input.consultantId,
+      },
+      error,
+    });
     return { ok: false, error: getErrorMessage(error) };
   }
 }

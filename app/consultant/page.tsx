@@ -148,7 +148,7 @@ async function ConsultantPageContent({
     ).sort((a, b) => b.localeCompare(a));
 
     return (
-      <Card className="flex min-h-0 h-full flex-col overflow-hidden">
+      <Card className="flex min-h-0 flex-col md:h-full md:overflow-hidden">
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-2">
               <CardTitle>My Timesheets</CardTitle>
@@ -165,7 +165,7 @@ async function ConsultantPageContent({
                 <CalendarClock className="h-4 w-4 text-blue-600 dark:text-blue-300" />
                 <p className="text-sm font-medium">{formatMonthLabel(statsMonth)} Snapshot</p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border border-sky-500/30 bg-sky-500/10 p-3">
                   <div className="flex items-center gap-2 text-sky-700 dark:text-sky-300">
                     <Timer className="h-4 w-4" />
@@ -214,7 +214,8 @@ async function ConsultantPageContent({
             />
 
             <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-              <Table>
+              <div className="h-full overflow-x-auto">
+                <Table className="min-w-[760px]">
                 <TableHeader className="sticky top-0 z-20 bg-card">
                   <TableRow>
                     <TableHead className="bg-card">Timesheet ID</TableHead>
@@ -282,7 +283,8 @@ async function ConsultantPageContent({
                     ])
                   )}
                 </TableBody>
-              </Table>
+                </Table>
+              </div>
             </div>
           </CardContent>
       </Card>
