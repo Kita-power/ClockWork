@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,6 +59,7 @@ export function FinanceTimesheetsClient({
   const [selectedTimesheetId, setSelectedTimesheetId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
   const [processingTimesheetId, setProcessingTimesheetId] = useState<string | null>(null);
+  const [expandedConsultantIds, setExpandedConsultantIds] = useState<Record<string, boolean>>({});
 
   const filteredTimesheets = timesheets.filter((timesheet) => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -66,6 +69,28 @@ export function FinanceTimesheetsClient({
       timesheet.week_start_date.includes(normalizedQuery)
     );
   });
+  const groupedTimesheets = useMemo(() => {
+    const groups = new Map<
+      string,
+      { consultantId: string; consultantName: string; timesheets: FinanceTimesheetRecord[] }
+    >();
+
+    for (const timesheet of filteredTimesheets) {
+      const existingGroup = groups.get(timesheet.consultant_id);
+      if (existingGroup) {
+        existingGroup.timesheets.push(timesheet);
+        continue;
+      }
+
+      groups.set(timesheet.consultant_id, {
+        consultantId: timesheet.consultant_id,
+        consultantName: timesheet.consultant_name,
+        timesheets: [timesheet],
+      });
+    }
+
+    return Array.from(groups.values());
+  }, [filteredTimesheets]);
 
   const selectedTimesheet = timesheets.find((ts) => ts.id === selectedTimesheetId) ?? null;
 
@@ -107,6 +132,27 @@ export function FinanceTimesheetsClient({
     window.URL.revokeObjectURL(url);
   };
 
+  const toggleConsultantGroup = (consultantId: string) => {
+    setExpandedConsultantIds((current) => ({
+      ...current,
+      [consultantId]: current[consultantId] === undefined ? false : !current[consultantId],
+    }));
+  };
+
+  const isConsultantGroupExpanded = (consultantId: string) => {
+    return expandedConsultantIds[consultantId] ?? true;
+  };
+
+  const getConsultantInitials = (name: string) => {
+    const parts = name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (parts.length === 0) return "??";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+  };
+
   return (
     <>
       <Card>
@@ -138,31 +184,75 @@ export function FinanceTimesheetsClient({
 
           <div className="overflow-hidden rounded-md border">
             <ul>
-              {filteredTimesheets.map((timesheet) => (
-                <li key={timesheet.id} className="border-b last:border-b-0">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTimesheetId(timesheet.id)}
-                    className="w-full px-4 py-3 text-left hover:bg-muted/40"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="font-semibold">{timesheet.consultant_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {timesheet.week_start_date} - {timesheet.week_end_date}
-                        </p>
+              {groupedTimesheets.map((group, groupIndex) => {
+                const isExpanded = isConsultantGroupExpanded(group.consultantId);
+                const consultantTotalHours = group.timesheets.reduce(
+                  (sum, timesheet) => sum + timesheet.total_hours,
+                  0,
+                );
+
+                return (
+                  <li key={group.consultantId} className={groupIndex > 0 ? "border-t" : undefined}>
+                    <button
+                      type="button"
+                      onClick={() => toggleConsultantGroup(group.consultantId)}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar size="sm">
+                          <AvatarFallback>{getConsultantInitials(group.consultantName)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold">{group.consultantName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {group.timesheets.length} timesheet{group.timesheets.length === 1 ? "" : "s"} -{" "}
+                            {consultantTotalHours.toFixed(2)} hours
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{timesheet.total_hours} hours</Badge>
-                        <Badge variant="outline" className={getStatusBadgeClassName(timesheet.status)}>
-                          {toUiStatus(timesheet.status)}
-                        </Badge>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                        )}
                       </div>
-                    </div>
-                  </button>
-                </li>
-              ))}
-              {filteredTimesheets.length === 0 && (
+                    </button>
+
+                    {isExpanded ? (
+                      <ul className="border-t bg-muted/10">
+                        {group.timesheets.map((timesheet) => (
+                          <li key={timesheet.id} className="border-b last:border-b-0">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTimesheetId(timesheet.id)}
+                              className="w-full px-4 py-3 text-left hover:bg-muted/40"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                  <p className="font-medium">
+                                    {timesheet.week_start_date} - {timesheet.week_end_date}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline">{timesheet.total_hours} hours</Badge>
+                                  <Badge
+                                    variant="outline"
+                                    className={getStatusBadgeClassName(timesheet.status)}
+                                  >
+                                    {toUiStatus(timesheet.status)}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </li>
+                );
+              })}
+              {groupedTimesheets.length === 0 && (
                 <li className="px-4 py-6 text-muted-foreground">
                   No timesheets matched your search.
                 </li>
