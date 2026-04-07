@@ -100,6 +100,7 @@ export function RoleTopbarLayout({
   const pathname = usePathname();
   const overviewPath = overviewHref ?? pathname;
   const tabsValue = pathname.startsWith(overviewPath) ? overviewPath : pathname;
+  const isOverviewPage = pathname === overviewPath;
   const { id: userId, fullName, email, role, isLoading, isAuthenticated } = useUser();
   const displayName = fullName.trim() || email || "User";
 
@@ -310,9 +311,9 @@ export function RoleTopbarLayout({
   };
 
   return (
-    <main className="min-h-svh bg-muted/30">
-      <header className="bg-background">
-        <div className="mx-auto flex w-full max-w-[1400px] items-start justify-between gap-4 px-5 py-4 md:px-8">
+    <main className="flex h-svh flex-col overflow-hidden bg-muted/30">
+      <header className="shrink-0 bg-background">
+        <div className="mx-auto flex w-full max-w-[1400px] items-start justify-between gap-4 px-3 py-4 md:px-5">
           <div className="min-w-0">
             <h1 className="text-3xl font-semibold tracking-tight">Clockwork</h1>
             <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
@@ -361,8 +362,10 @@ export function RoleTopbarLayout({
         <Separator />
       </header>
 
-      <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-8 md:py-8">
-        <section>{children}</section>
+      <div className="mx-auto flex w-full max-w-[1400px] min-h-0 flex-1 flex-col overflow-hidden px-3 py-6 md:px-5 md:py-8">
+        <section className={`min-h-0 flex-1 ${isOverviewPage ? "overflow-hidden" : "overflow-y-auto"}`}>
+          {children}
+        </section>
       </div>
     </main>
   );

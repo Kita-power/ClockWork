@@ -311,6 +311,25 @@ function formatDate(date: string): string {
   });
 }
 
+function getStatusBadgeClassName(status: string): string {
+  if (status === "approved") {
+    return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+  }
+  if (status === "processed") {
+    return "border-sky-600/30 bg-sky-500/15 text-sky-700 dark:text-sky-300";
+  }
+  if (status === "submitted" || status === "submitted_late") {
+    return "border-blue-600/30 bg-blue-500/15 text-blue-700 dark:text-blue-300";
+  }
+  if (status === "rejected") {
+    return "border-rose-600/30 bg-rose-500/15 text-rose-700 dark:text-rose-300";
+  }
+  if (status === "overdue") {
+    return "border-red-600/30 bg-red-500/15 text-red-700 dark:text-red-300";
+  }
+  return "border-amber-600/30 bg-amber-500/15 text-amber-700 dark:text-amber-300";
+}
+
 export function ConsultantTimesheetClient({
   initialTimesheet,
   assignedProjects,
@@ -580,20 +599,25 @@ export function ConsultantTimesheetClient({
         id: timesheet.id,
         weekStart: timesheet.weekStart,
         entries: prepareTimesheetEntries(timesheet.entries),
-      }).then((result) => {
-        if (!result.ok) {
-          setErrorMessage(result.error);
-          setIsLeaveDialogOpen(false);
-          // Scroll to error message so user can see the duplicate timesheet error
-          setTimeout(() => {
-            errorMessageRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-          }, 100);
-          return;
-        }
+      })
+        .then((result) => {
+          if (!result.ok) {
+            setErrorMessage(result.error);
+            setIsLeaveDialogOpen(false);
+            // Scroll to error message so user can see the duplicate timesheet error
+            setTimeout(() => {
+              errorMessageRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 100);
+            return;
+          }
 
-        markCurrentSnapshotAsSaved();
-        navigateAfterLeaveConfirmation();
-      });
+          markCurrentSnapshotAsSaved();
+          navigateAfterLeaveConfirmation();
+        })
+        .catch(() => {
+          setErrorMessage("Unable to save draft right now. Please try again.");
+          setIsLeaveDialogOpen(false);
+        });
     });
   }
 
@@ -762,35 +786,39 @@ export function ConsultantTimesheetClient({
         ? loadConsultantWeeklyTimesheetAction
         : loadConsultantWeeklyDraftTimesheetAction;
 
-      loadAction(weekStart).then((result) => {
-        if (!result.ok) {
-          setErrorMessage(result.error);
-          return;
-        }
+      loadAction(weekStart)
+        .then((result) => {
+          if (!result.ok) {
+            setErrorMessage(result.error);
+            return;
+          }
 
-        const nextSelectedProjectCode = resolveSelectedProjectCode(result.timesheet);
-        const normalizedNextProjectCode = normalizeProjectCode(nextSelectedProjectCode);
-        const resolvedNextProjectCode =
-          assignedProjectCodes.has(normalizedNextProjectCode)
-            ? normalizedNextProjectCode
-            : "";
-        const initializedTimesheet = initializeTimesheet(result.timesheet);
+          const nextSelectedProjectCode = resolveSelectedProjectCode(result.timesheet);
+          const normalizedNextProjectCode = normalizeProjectCode(nextSelectedProjectCode);
+          const resolvedNextProjectCode =
+            assignedProjectCodes.has(normalizedNextProjectCode)
+              ? normalizedNextProjectCode
+              : "";
+          const initializedTimesheet = initializeTimesheet(result.timesheet);
 
-        savedSnapshotRef.current = buildTimesheetSnapshot(
-          initializedTimesheet,
-          resolvedNextProjectCode,
-        );
-        savedTimesheetRef.current = cloneTimesheetRecord(initializedTimesheet);
-        savedProjectCodeRef.current = resolvedNextProjectCode;
+          savedSnapshotRef.current = buildTimesheetSnapshot(
+            initializedTimesheet,
+            resolvedNextProjectCode,
+          );
+          savedTimesheetRef.current = cloneTimesheetRecord(initializedTimesheet);
+          savedProjectCodeRef.current = resolvedNextProjectCode;
 
-        setSelectedProjectCode(resolvedNextProjectCode);
-        setTimesheet(initializedTimesheet);
-        router.replace(
-          useNewRouteForDrafts
-            ? `/consultant/new?timesheetId=${result.timesheet.id}`
-            : `/consultant/timesheets/${result.timesheet.id}`,
-        );
-      });
+          setSelectedProjectCode(resolvedNextProjectCode);
+          setTimesheet(initializedTimesheet);
+          router.replace(
+            useNewRouteForDrafts
+              ? `/consultant/new?timesheetId=${result.timesheet.id}`
+              : `/consultant/timesheets/${result.timesheet.id}`,
+          );
+        })
+        .catch(() => {
+          setErrorMessage("Unable to load that week right now. Please try again.");
+        });
     });
   }
 
@@ -827,21 +855,25 @@ export function ConsultantTimesheetClient({
         id: timesheet.id,
         weekStart: timesheet.weekStart,
         entries: prepareTimesheetEntries(timesheet.entries),
-      }).then((result) => {
-        if (!result.ok) {
-          setErrorMessage(result.error);
-          return;
-        }
+      })
+        .then((result) => {
+          if (!result.ok) {
+            setErrorMessage(result.error);
+            return;
+          }
 
-        markCurrentSnapshotAsSaved();
-        setSuccessMessage(result.message);
-        router.replace(
-          useNewRouteForDrafts
-            ? `/consultant/new?timesheetId=${result.timesheetId ?? timesheet.id}`
-            : `/consultant/timesheets/${result.timesheetId ?? timesheet.id}`,
-        );
-        router.refresh();
-      });
+          markCurrentSnapshotAsSaved();
+          setSuccessMessage(result.message);
+          router.replace(
+            useNewRouteForDrafts
+              ? `/consultant/new?timesheetId=${result.timesheetId ?? timesheet.id}`
+              : `/consultant/timesheets/${result.timesheetId ?? timesheet.id}`,
+          );
+          router.refresh();
+        })
+        .catch(() => {
+          setErrorMessage("Unable to save draft right now. Please try again.");
+        });
     });
   }
 
@@ -855,26 +887,30 @@ export function ConsultantTimesheetClient({
         id: timesheet.id,
         weekStart: timesheet.weekStart,
         entries: prepareTimesheetEntries(timesheet.entries),
-      }).then((result) => {
-        if (!result.ok) {
-          setErrorMessage(result.error);
-          return;
-        }
+      })
+        .then((result) => {
+          if (!result.ok) {
+            setErrorMessage(result.error);
+            return;
+          }
 
-        markCurrentSnapshotAsSaved();
-        setTimesheet((prev) => ({ ...prev, status: result.status ?? "submitted" }));
-        setSuccessMessage(result.message);
-        appendNotification(
-          createTimesheetSubmittedNotification({
-            projectCode: selectedProjectCode,
-            weekStart: timesheet.weekStart,
-            weekEnd: timesheet.weekEnd,
-            isLate: result.status === "submitted_late",
-          }),
-        );
-        router.replace(`/consultant/timesheets/${result.timesheetId ?? timesheet.id}`);
-        router.refresh();
-      });
+          markCurrentSnapshotAsSaved();
+          setTimesheet((prev) => ({ ...prev, status: result.status ?? "submitted" }));
+          setSuccessMessage(result.message);
+          appendNotification(
+            createTimesheetSubmittedNotification({
+              projectCode: selectedProjectCode,
+              weekStart: timesheet.weekStart,
+              weekEnd: timesheet.weekEnd,
+              isLate: result.status === "submitted_late",
+            }),
+          );
+          router.replace(`/consultant/timesheets/${result.timesheetId ?? timesheet.id}`);
+          router.refresh();
+        })
+        .catch(() => {
+          setErrorMessage("Unable to submit timesheet right now. Please try again.");
+        });
     });
   }
 
@@ -916,13 +952,8 @@ export function ConsultantTimesheetClient({
               </Dialog>
             ) : null}
             <Badge
-              variant={
-                displayStatus === "overdue"
-                  ? "destructive"
-                  : isReadOnly
-                    ? "secondary"
-                    : "outline"
-              }
+              variant="outline"
+              className={getStatusBadgeClassName(displayStatus)}
             >
               {statusLabel}
             </Badge>

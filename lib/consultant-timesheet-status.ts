@@ -60,6 +60,10 @@ export function formatConsultantTimesheetStatusLabel(
     return "Approved";
   }
 
+  if (displayStatus === "processed") {
+    return "Processed";
+  }
+
   if (displayStatus === "rejected") {
     return "Rejected";
   }

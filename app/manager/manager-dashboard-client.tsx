@@ -50,18 +50,30 @@ type LocalLeaveRequest = ManagerLeaveRequestSummary & {
 type TimesheetStatusFilter = "all" | LocalTimesheet["status"];
 type LeaveStatusFilter = "all" | LocalLeaveRequest["status"];
 
-function timesheetBadgeVariant(status: LocalTimesheet["status"]) {
-  
-  if (status === "Submitted Late" || status === "Approved Late") return "outline";
-  if (status === "Approved" || status === "Processed") return "secondary";
-  if (status === "Rejected") return "destructive";
-  return "default";
+function getTimesheetBadgeClassName(status: LocalTimesheet["status"]) {
+  if (status === "Approved" || status === "Approved Late") {
+    return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+  }
+  if (status === "Processed") {
+    return "border-sky-600/30 bg-sky-500/15 text-sky-700 dark:text-sky-300";
+  }
+  if (status === "Submitted" || status === "Submitted Late") {
+    return "border-blue-600/30 bg-blue-500/15 text-blue-700 dark:text-blue-300";
+  }
+  if (status === "Rejected") {
+    return "border-rose-600/30 bg-rose-500/15 text-rose-700 dark:text-rose-300";
+  }
+  return "border-amber-600/30 bg-amber-500/15 text-amber-700 dark:text-amber-300";
 }
 
-function leaveBadgeVariant(status: LocalLeaveRequest["status"]) {
-  if (status === "Rejected") return "destructive";
-  if (status === "Approved") return "secondary";
-  return "default";
+function getLeaveBadgeClassName(status: LocalLeaveRequest["status"]) {
+  if (status === "Approved") {
+    return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+  }
+  if (status === "Rejected") {
+    return "border-rose-600/30 bg-rose-500/15 text-rose-700 dark:text-rose-300";
+  }
+  return "border-amber-600/30 bg-amber-500/15 text-amber-700 dark:text-amber-300";
 }
 
 function canApproveTimesheet(status: LocalTimesheet["status"]) {
@@ -678,7 +690,7 @@ export function ManagerDashboardClient({
                       </TableCell>
 
                       <TableCell>
-                        <Badge variant={timesheetBadgeVariant(t.status)}>
+                        <Badge variant="outline" className={getTimesheetBadgeClassName(t.status)}>
                           {t.status}
                         </Badge>
 
@@ -925,7 +937,7 @@ export function ManagerDashboardClient({
                       </TableCell>
 
                       <TableCell>
-                        <Badge variant={leaveBadgeVariant(r.status)}>
+                        <Badge variant="outline" className={getLeaveBadgeClassName(r.status)}>
                           {r.status}
                         </Badge>
 

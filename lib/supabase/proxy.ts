@@ -1,6 +1,41 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
+import { getRoleHomePath } from "../role-home-path";
+
+type UserRole = "admin" | "manager" | "finance" | "consultant";
+
+const ROLE_PREFIXES: Record<UserRole, string> = {
+  admin: "/admin",
+  manager: "/manager",
+  finance: "/finance",
+  consultant: "/consultant",
+};
+
+const PUBLIC_PATH_PREFIXES = ["/", "/auth"];
+
+function isPublicPath(pathname: string): boolean {
+  if (pathname === "/") {
+    return true;
+  }
+
+  return PUBLIC_PATH_PREFIXES.some(
+    (prefix) => prefix !== "/" && pathname.startsWith(prefix),
+  );
+}
+
+function getRequiredRoleForPath(pathname: string): UserRole | null {
+  for (const [role, prefix] of Object.entries(ROLE_PREFIXES) as Array<[UserRole, string]>) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+      return role;
+    }
+  }
+  return null;
+}
+
+function isKnownRole(value: string | null | undefined): value is UserRole {
+  return value === "admin" || value === "manager" || value === "finance" || value === "consultant";
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -47,20 +82,38 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  // TEMP DEV BYPASS:
-  // Authentication redirect is disabled so role pages can be built first.
-  // Re-enable this block when auth protection is needed again.
-  // if (
-  //   request.nextUrl.pathname !== "/" &&
-  //   !user &&
-  //   !request.nextUrl.pathname.startsWith("/login") &&
-  //   !request.nextUrl.pathname.startsWith("/auth")
-  // ) {
-  //   // no user, potentially respond by redirecting the user to the login page
-  //   const url = request.nextUrl.clone();
-  //   url.pathname = "/auth/login";
-  //   return NextResponse.redirect(url);
-  // }
+  const pathname = request.nextUrl.pathname;
+  const requiredRole = getRequiredRoleForPath(pathname);
+  const isProtectedRolePath = requiredRole !== null;
+
+  if (!user && (isProtectedRolePath || !isPublicPath(pathname))) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/login";
+    return NextResponse.redirect(url);
+  }
+
+  if (user) {
+    const { data: profile, error: profileError } = await supabase
+      .from("users")
+      .select("role, is_active")
+      .eq("id", user.sub)
+      .maybeSingle();
+
+    const profileRole = profile?.role;
+    const isActive = profile?.is_active === true;
+
+    if (profileError || !isKnownRole(profileRole) || !isActive) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/login";
+      return NextResponse.redirect(url);
+    }
+
+    if (requiredRole && profileRole !== requiredRole) {
+      const url = request.nextUrl.clone();
+      url.pathname = getRoleHomePath(profileRole);
+      return NextResponse.redirect(url);
+    }
+  }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:

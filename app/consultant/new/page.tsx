@@ -1,9 +1,19 @@
-import { connection } from "next/server";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
+import { Suspense } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { consultantService } from "@/services";
 import { ConsultantTimesheetClient } from "../consultant-timesheet-client";
 
-type ConsultantNewTimesheetPageProps = {
+type ConsultantNewTimesheetContentProps = {
   searchParams: Promise<{
     create?: string;
     timesheetId?: string;
@@ -12,19 +22,29 @@ type ConsultantNewTimesheetPageProps = {
   }>;
 };
 
-export default async function ConsultantNewTimesheetPage({
+export default function ConsultantNewTimesheetPage({
   searchParams,
-}: ConsultantNewTimesheetPageProps) {
-  await connection();
-  const params = await searchParams;
-  const shouldCreate = params.create === "1";
+}: ConsultantNewTimesheetContentProps) {
+  return (
+    <Suspense fallback={<ConsultantNewTimesheetFallback />}>
+      <ConsultantNewTimesheetContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
 
-  if (shouldCreate) {
-    const created = await consultantService.createNewWeeklyTimesheet();
-    redirect(`/consultant/new?timesheetId=${created.id}`);
-  }
-
+async function ConsultantNewTimesheetContent({
+  searchParams,
+}: ConsultantNewTimesheetContentProps) {
   try {
+    await connection();
+    const params = await searchParams;
+    const shouldCreate = params.create === "1";
+
+    if (shouldCreate) {
+      const created = await consultantService.createNewWeeklyTimesheet();
+      redirect(`/consultant/new?timesheetId=${created.id}`);
+    }
+
     const [timesheet, assignedProjects] = await Promise.all([
       params.timesheetId
         ? consultantService.getWeeklyTimesheetById(params.timesheetId)
@@ -48,19 +68,37 @@ export default async function ConsultantNewTimesheetPage({
     const message =
       error instanceof Error ? error.message : "Unable to load timesheet";
 
-    const [fallback, assignedProjects] = await Promise.all([
-      consultantService.createNewWeeklyTimesheet(),
-      consultantService.listAssignedProjectsForCurrentConsultant(),
-    ]);
     return (
-      <ConsultantTimesheetClient
-        key={fallback.id}
-        initialTimesheet={fallback}
-        assignedProjects={assignedProjects}
-        initialError={message}
-        loadSubmittedOnWeekChange={false}
-        useNewRouteForDrafts={true}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle>New Weekly Timesheet</CardTitle>
+          <CardDescription>
+            We could not load your draft timesheet.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {message}
+          </p>
+          <Button asChild variant="outline">
+            <Link href="/consultant">Back to My Timesheets</Link>
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
+}
+
+function ConsultantNewTimesheetFallback() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>New Weekly Timesheet</CardTitle>
+        <CardDescription>Loading timesheet...</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-48 rounded-md border bg-muted/30" />
+      </CardContent>
+    </Card>
+  );
 }

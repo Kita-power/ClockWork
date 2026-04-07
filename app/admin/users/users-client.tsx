@@ -39,7 +39,6 @@ import {
 import {
   createAdminUserAction,
   resetAdminUserPasswordAction,
-  setAdminUserActiveAction,
 } from "./actions";
 import { useUser } from "@/hooks/use-user";
 
@@ -363,27 +362,6 @@ export function AdminUsersClient({
                     Reset password
                   </Button>
 
-                  <Button
-                    type="button"
-                    variant={selectedUser.is_active ? "destructive" : "secondary"}
-                    disabled={isPending || !currentUser.isAdmin}
-                    onClick={() => {
-                      setErrorMessage(null);
-                      startTransition(async () => {
-                        const result = await setAdminUserActiveAction({
-                          userId: selectedUser.id,
-                          isActive: !selectedUser.is_active,
-                        });
-                        if (!result.ok) {
-                          setErrorMessage(result.error);
-                          return;
-                        }
-                        router.refresh();
-                      });
-                    }}
-                  >
-                    {selectedUser.is_active ? "Deactivate User" : "Reactivate User"}
-                  </Button>
                 </CardContent>
               </Card>
             </div>

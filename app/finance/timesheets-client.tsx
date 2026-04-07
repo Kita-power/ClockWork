@@ -25,6 +25,25 @@ function toUiStatus(status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function getStatusBadgeClassName(status: string): string {
+  if (status === "approved") {
+    return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+  }
+  if (status === "processed") {
+    return "border-sky-600/30 bg-sky-500/15 text-sky-700 dark:text-sky-300";
+  }
+  if (status === "submitted" || status === "submitted_late") {
+    return "border-blue-600/30 bg-blue-500/15 text-blue-700 dark:text-blue-300";
+  }
+  if (status === "rejected") {
+    return "border-rose-600/30 bg-rose-500/15 text-rose-700 dark:text-rose-300";
+  }
+  if (status === "overdue") {
+    return "border-red-600/30 bg-red-500/15 text-red-700 dark:text-red-300";
+  }
+  return "border-amber-600/30 bg-amber-500/15 text-amber-700 dark:text-amber-300";
+}
+
 export function FinanceTimesheetsClient({
   timesheets,
   initialError,
@@ -122,14 +141,7 @@ export function FinanceTimesheetsClient({
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{timesheet.total_hours} hours</Badge>
-                        <Badge
-                          variant={
-                            timesheet.status === "approved"  ? "secondary"   :
-                            timesheet.status === "processed" ? "default"     :
-                            timesheet.status === "rejected"  ? "destructive" :
-                            "outline"
-                          }
-                        >
+                        <Badge variant="outline" className={getStatusBadgeClassName(timesheet.status)}>
                           {toUiStatus(timesheet.status)}
                         </Badge>
                       </div>
