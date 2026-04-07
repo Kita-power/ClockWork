@@ -13,7 +13,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const tabs = [
   { href: "/admin/users", label: "Users" },
   { href: "/admin/projects", label: "Projects" },
-  { href: "/admin/configuration", label: "Configuration" },
   { href: "/admin/audit-logs", label: "Audit Logs" },
 ];
 
