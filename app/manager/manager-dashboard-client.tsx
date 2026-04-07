@@ -29,7 +29,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type {
-  ManagerLeaveRequestSummary,
   ManagerTimesheetSummary,
 } from "./mock-data";
 
@@ -37,12 +36,7 @@ type LocalTimesheet = ManagerTimesheetSummary & {
   managerComment?: string;
 };
 
-type LocalLeaveRequest = ManagerLeaveRequestSummary & {
-  managerComment?: string;
-};
-
 type TimesheetStatusFilter = "all" | LocalTimesheet["status"];
-type LeaveStatusFilter = "all" | LocalLeaveRequest["status"];
 
 function getTimesheetBadgeClassName(status: LocalTimesheet["status"]) {
   if (status === "Approved") {
@@ -63,30 +57,15 @@ function getTimesheetBadgeClassName(status: LocalTimesheet["status"]) {
   return "border-amber-600/30 bg-amber-500/15 text-amber-700 dark:text-amber-300";
 }
 
-function getLeaveBadgeClassName(status: LocalLeaveRequest["status"]) {
-  if (status === "Approved") {
-    return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
-  }
-  if (status === "Rejected") {
-    return "border-rose-600/30 bg-rose-500/15 text-rose-700 dark:text-rose-300";
-  }
-  return "border-amber-600/30 bg-amber-500/15 text-amber-700 dark:text-amber-300";
-}
-
 export function ManagerDashboardClient({
   initialTimesheets,
-  initialLeaveRequests,
 }: {
   initialTimesheets: ManagerTimesheetSummary[];
-  initialLeaveRequests: ManagerLeaveRequestSummary[];
 }) {
   const [timesheetSearch, setTimesheetSearch] = useState("");
-  const [leaveSearch, setLeaveSearch] = useState("");
 
   const [timesheetStatusFilter, setTimesheetStatusFilter] =
     useState<TimesheetStatusFilter>("all");
-  const [leaveStatusFilter, setLeaveStatusFilter] =
-    useState<LeaveStatusFilter>("all");
 
   const [timesheets, setTimesheets] = useState<LocalTimesheet[]>(
     initialTimesheets.map((t) => ({ ...t })),
@@ -96,14 +75,6 @@ export function ManagerDashboardClient({
     setTimesheets(initialTimesheets.map((t) => ({ ...t })));
   }, [initialTimesheets]);
   
-  useEffect(() => {
-    setLeaveRequests(initialLeaveRequests.map((r) => ({ ...r })));
-  }, [initialLeaveRequests]);
-
-  const [leaveRequests, setLeaveRequests] = useState<LocalLeaveRequest[]>(
-    initialLeaveRequests.map((r) => ({ ...r })),
-  );
-
   const { isAuthenticated, role, isLoading } = useUser();
   const router = useRouter();
   const canManage = !isLoading && isAuthenticated && role === "manager";
@@ -120,19 +91,6 @@ export function ManagerDashboardClient({
       byStatus,
     };
   }, [timesheets]);
-
-  const leaveCounts = useMemo(() => {
-    const byStatus = new Map<string, number>();
-
-    for (const r of leaveRequests) {
-      byStatus.set(r.status, (byStatus.get(r.status) ?? 0) + 1);
-    }
-
-    return {
-      all: leaveRequests.length,
-      byStatus,
-    };
-  }, [leaveRequests]);
 
   const filteredTimesheets = useMemo(() => {
     const q = timesheetSearch.trim().toLowerCase();
@@ -170,26 +128,6 @@ export function ManagerDashboardClient({
     [filteredTimesheets],
   );
 
-  const filteredLeaveRequests = useMemo(() => {
-    const q = leaveSearch.trim().toLowerCase();
-
-    return leaveRequests.filter((r) => {
-      const matchesSearch =
-        !q ||
-        r.consultantName.toLowerCase().includes(q) ||
-        r.leaveType.toLowerCase().includes(q) ||
-        r.id.toLowerCase().includes(q) ||
-        r.status.toLowerCase().includes(q);
-
-      const matchesStatus =
-        leaveStatusFilter === "all"
-          ? true
-          : r.status === leaveStatusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [leaveRequests, leaveSearch, leaveStatusFilter]);
-
   function openViewTimesheet(id: string) {
     router.push(`/manager/timesheet/${id}`);
   }
@@ -199,19 +137,13 @@ export function ManagerDashboardClient({
       <CardHeader>
         <CardTitle>Manager review dashboard</CardTitle>
         <CardDescription>
-          Review submitted timesheets and leave requests. Prototype actions are
-          currently simulated in the UI.
+          Review submitted timesheets. Prototype actions are currently
+          simulated in the UI.
         </CardDescription>
       </CardHeader>
 
       <CardContent>
-        <Tabs defaultValue="timesheets" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="timesheets">Timesheets</TabsTrigger>
-            <TabsTrigger value="leave-requests">Leave Requests</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="timesheets" className="space-y-4">
+        <div className="space-y-4">
             <Input
               placeholder="Search by consultant, project, ID, or status..."
               value={timesheetSearch}
@@ -221,7 +153,7 @@ export function ManagerDashboardClient({
             {!isLoading && !canManage ? (
               <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 You must be logged in as a <span className="font-semibold">manager</span> to
-                access manager timesheets and leave requests.
+                access manager timesheets.
               </div>
             ) : null}
 
@@ -388,96 +320,7 @@ export function ManagerDashboardClient({
                 </Table>
               </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="leave-requests" className="space-y-4">
-            <Input
-              placeholder="Search by consultant, leave type, ID, or status..."
-              value={leaveSearch}
-              onChange={(e) => setLeaveSearch(e.target.value)}
-            />
-
-            <Tabs
-              value={leaveStatusFilter}
-              onValueChange={(value) =>
-                setLeaveStatusFilter(value as LeaveStatusFilter)
-              }
-            >
-              <TabsList className="w-full justify-start overflow-x-auto whitespace-nowrap">
-                <TabsTrigger value="all" className="flex-none">
-                  All ({leaveCounts.all})
-                </TabsTrigger>
-                <TabsTrigger value="Pending" className="flex-none">
-                  Pending ({leaveCounts.byStatus.get("Pending") ?? 0})
-                </TabsTrigger>
-                <TabsTrigger value="Approved" className="flex-none">
-                  Approved ({leaveCounts.byStatus.get("Approved") ?? 0})
-                </TabsTrigger>
-                <TabsTrigger value="Rejected" className="flex-none">
-                  Rejected ({leaveCounts.byStatus.get("Rejected") ?? 0})
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Consultant</TableHead>
-                    <TableHead>Leave Type</TableHead>
-                    <TableHead>Dates</TableHead>
-                    <TableHead className="text-right">Duration</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-
-                <TableBody>
-                  {filteredLeaveRequests.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-medium">
-                        {r.consultantName}
-                      </TableCell>
-
-                      <TableCell>{r.leaveType}</TableCell>
-
-                      <TableCell className="text-sm text-muted-foreground">
-                        {r.startDate} → {r.endDate}
-                      </TableCell>
-
-                      <TableCell className="text-right">
-                        {r.durationDays} day{r.durationDays === 1 ? "" : "s"}
-                      </TableCell>
-
-                      <TableCell>
-                        <Badge variant="outline" className={getLeaveBadgeClassName(r.status)}>
-                          {r.status}
-                        </Badge>
-
-                        {r.status === "Rejected" && r.managerComment ? (
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            <span className="font-medium">Comment:</span>
-                            <div className="mt-1 max-h-16 overflow-auto whitespace-pre-wrap break-words rounded border bg-muted/30 p-2">
-                              {r.managerComment}
-                            </div>
-                          </div>
-                        ) : null}
-                      </TableCell>
-
-                    </TableRow>
-                  ))}
-
-                  {filteredLeaveRequests.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-muted-foreground">
-                        No leave requests found.
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-        </Tabs>
+        </div>
 
         <p className="mt-4 text-xs text-muted-foreground">
           Auth detected:{" "}
