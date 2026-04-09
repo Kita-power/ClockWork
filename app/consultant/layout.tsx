@@ -4,10 +4,7 @@ export default function ConsultantLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <RoleTopbarLayout
-      subtitle="Create, update, and submit weekly timesheets."
-      overviewHref="/consultant"
-    >
+    <RoleTopbarLayout overviewHref="/consultant">
       {children}
     </RoleTopbarLayout>
   );

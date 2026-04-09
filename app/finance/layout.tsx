@@ -4,7 +4,7 @@ export default function FinanceLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <RoleTopbarLayout subtitle="Process approved timesheets and export payroll data.">
+    <RoleTopbarLayout>
       {children}
     </RoleTopbarLayout>
   );

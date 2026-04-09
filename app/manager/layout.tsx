@@ -4,10 +4,7 @@ export default function ManagerLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <RoleTopbarLayout
-      subtitle="Review, approve, and reject submitted timesheets."
-      overviewHref="/manager"
-    >
+    <RoleTopbarLayout overviewHref="/manager">
       {children}
     </RoleTopbarLayout>
   );

@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { TopbarUserMenu } from "@/components/topbar-user-menu";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationButton } from "@/components/ui/notif-button";
@@ -88,13 +88,11 @@ function toStoredNotification(notification: Notification): StoredNotification {
 }
 
 type RoleTopbarLayoutProps = {
-  subtitle: string;
   overviewHref?: string;
   children: React.ReactNode;
 };
 
 export function RoleTopbarLayout({
-  subtitle,
   overviewHref,
   children,
 }: RoleTopbarLayoutProps) {
@@ -320,10 +318,28 @@ export function RoleTopbarLayout({
   return (
     <main className="flex h-svh flex-col overflow-hidden bg-muted/30">
       <header className="shrink-0 bg-background">
-        <div className="mx-auto flex w-full max-w-[1400px] items-start justify-between gap-4 px-3 py-4 md:px-5">
+        <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-3 py-4 md:px-5">
           <div className="min-w-0">
-            <h1 className="text-3xl font-semibold tracking-tight">Clockwork</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-semibold tracking-tight">Clockwork</h1>
+              <span aria-hidden="true" className="text-3xl leading-none text-muted-foreground">
+                |
+              </span>
+              <Image
+                src="/fdm-logo.svg"
+                alt="FDM logo"
+                width={72}
+                height={23}
+                className="h-6 w-auto dark:hidden"
+              />
+              <Image
+                src="/fdm-logo-dark.svg"
+                alt="FDM logo"
+                width={72}
+                height={23}
+                className="hidden h-6 w-auto dark:block"
+              />
+            </div>
             {navItems.length > 1 ? (
               <Tabs value={tabsValue} className="mt-3">
                 <TabsList>
@@ -345,7 +361,7 @@ export function RoleTopbarLayout({
               {isLoading ? (
                 <p className="text-sm font-semibold text-muted-foreground">Loading…</p>
               ) : isAuthenticated ? (
-                <TopbarUserMenu userName={displayName} />
+                <TopbarUserMenu userName={displayName} roleLabel={formatRoleLabel(role)} />
               ) : (
                 <Link
                   href="/auth/login"
@@ -362,13 +378,6 @@ export function RoleTopbarLayout({
                 />
               ) : null}
             </div>
-            <Badge variant="secondary">
-              {isLoading
-                ? "…"
-                : isAuthenticated
-                  ? formatRoleLabel(role)
-                  : "Guest"}
-            </Badge>
           </div>
         </div>
         <Separator />

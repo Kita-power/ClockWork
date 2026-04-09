@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,11 +64,28 @@ export function LoginForm({
       )}
       {...props}
     >
-      <div className="flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          Clockwork Account Access
-        </p>
-        <h1 className="text-4xl font-semibold tracking-tight">Login</h1>
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="flex items-center justify-center gap-3">
+          <h1 className="text-3xl font-semibold tracking-tight">Clockwork</h1>
+          <span aria-hidden="true" className="text-3xl leading-none text-muted-foreground">
+            |
+          </span>
+          <Image
+            src="/fdm-logo.svg"
+            alt="FDM logo"
+            width={72}
+            height={23}
+            className="h-6 w-auto dark:hidden"
+          />
+          <Image
+            src="/fdm-logo-dark.svg"
+            alt="FDM logo"
+            width={72}
+            height={23}
+            className="hidden h-6 w-auto dark:block"
+          />
+        </div>
+        <h2 className="text-3xl font-semibold tracking-tight">Login</h2>
       </div>
 
       <form onSubmit={handleLogin}>

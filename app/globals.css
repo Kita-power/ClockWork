@@ -2,54 +2,355 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   FDM DESIGN TOKENS
+   Apply to :root in your global CSS file
+   ============================================ */
+
+:root {
+  /* --- BRAND COLOURS --- */
+  --color-brand-green: #c5ff00;
+  --color-brand-green-hover: #a7d900; /* rgb(167,217,0) */
+  --color-brand-green-tint: rgba(197, 255, 0, 0.12); /* dark mode surface tint */
+  --color-brand-green-border: rgba(197, 255, 0, 0.3);
+
+  --color-dark: #1e1e1e; /* primary text + dark bg */
+  --color-medium-dark: #303030; /* secondary dark surface */
+  --color-medium-light: #efecea; /* footer, nav pill bg */
+  --color-light: #f7f6f5; /* page background */
+  --color-white: #ffffff;
+
+  /* --- SEMANTIC / STATUS --- */
+  --color-error: #ff4e48;
+  --color-success: var(--color-brand-green);
+
+  /* --- ACCENT PALETTE (section backgrounds) --- */
+  --color-accent-pink: #ff74ff;
+  --color-accent-blue: #70d8ff;
+  --color-accent-orange: #ff7f00;
+  --color-accent-purple: #a44cff;
+
+  /* --- TYPOGRAPHY --- */
+  --font-display: "Sharp Grotesk Bold 15", sans-serif; /* H1 only */
+  --font-body: Inter, sans-serif;
+
+  --text-h1: 8rem; /* desktop */
+  --text-h1-lg: 11.2rem;
+  --text-h2: 4.8rem;
+  --text-h3: 4rem;
+  --text-h4: 3.2rem;
+  --text-h5: 2rem;
+  --text-h6: 1.8rem;
+  --text-body: 1.8rem;
+  --text-small: 1.6rem;
+  --text-xs: 1.4rem;
+
+  --text-h1-mob: 5.6rem;
+  --text-h2-mob: 2.8rem;
+  --text-h3-mob: 2.4rem;
+  --text-h4-mob: 2.2rem;
+  --text-body-mob: 1.6rem;
+
+  --leading-body: 1.444;
+  --leading-tight: 1.1;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-black: 900;
+
+  /* --- SPACING / RADIUS --- */
+  --radius-sm: 0.8rem;
+  --radius-md: 1.2rem;
+  --radius-pill: 3rem;
+
+  /* --- BORDER --- */
+  --border-default: 0.1rem solid currentColor;
+  --border-subtle: 0.1rem solid rgba(197, 255, 0, 0.32);
+
+  /* --- TRANSITIONS --- */
+  --transition: 0.3s;
+}
+
+/* ============================================
+   LIGHT MODE (default)
+   ============================================ */
+
+:root {
+  --color-bg-page: var(--color-light); /* #f7f6f5 */
+  --color-bg-surface: var(--color-white); /* cards, inputs */
+  --color-bg-subtle: var(--color-medium-light); /* #efecea */
+  --color-bg-inverse: var(--color-dark); /* dark sections */
+
+  --color-text-primary: var(--color-dark); /* #1e1e1e */
+  --color-text-secondary: #4f4f4f;
+  --color-text-inverse: var(--color-white);
+
+  --color-border: rgba(30, 30, 30, 0.2);
+  --color-border-strong: rgba(30, 30, 30, 0.4);
+
+  /* Buttons */
+  --btn-bg: var(--color-brand-green);
+  --btn-text: var(--color-dark);
+  --btn-border: var(--color-brand-green);
+  --btn-bg-hover: var(--color-dark);
+  --btn-text-hover: var(--color-white);
+  --btn-border-hover: var(--color-dark);
+
+  /* Dark variant button (used on coloured section bgs) */
+  --btn-dark-bg: var(--color-dark);
+  --btn-dark-text: var(--color-white);
+  --btn-dark-bg-hover: var(--color-white);
+  --btn-dark-text-hover: var(--color-dark);
+
+  /* Links */
+  --color-link: var(--color-dark);
+  --color-link-hover: #5f7f00;
+
+  /* Selection */
+  --color-selection-bg: rgba(17, 17, 17, 0.9);
+  --color-selection-text: var(--color-white);
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+
+.dark {
+  --color-bg-page: var(--color-dark);
+  --color-bg-surface: var(--color-medium-dark);
+  --color-bg-subtle: #252525;
+  --color-bg-inverse: var(--color-white);
+
+  --color-text-primary: var(--color-white);
+  --color-text-secondary: rgba(255, 255, 255, 0.5);
+  --color-text-inverse: var(--color-dark);
+
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-border-strong: rgba(255, 255, 255, 0.28);
+
+  /* Buttons - green stays, hover flips to white */
+  --btn-bg: var(--color-brand-green);
+  --btn-text: var(--color-dark);
+  --btn-border: var(--color-brand-green);
+  --btn-bg-hover: var(--color-white);
+  --btn-text-hover: var(--color-dark);
+  --btn-border-hover: var(--color-white);
+
+  --btn-dark-bg: var(--color-white);
+  --btn-dark-text: var(--color-dark);
+  --btn-dark-bg-hover: var(--color-brand-green);
+  --btn-dark-text-hover: var(--color-dark);
+
+  --color-link: var(--color-white);
+  --color-link-hover: var(--color-brand-green-hover);
+
+  --color-selection-bg: rgba(17, 17, 17, 0.9);
+  --color-selection-text: var(--color-white);
+}
+
+/* ============================================
+   SECTION BACKGROUNDS
+   Add class to <section> to apply a theme.
+   Text colours auto-flip via the vars below.
+   ============================================ */
+
+section.theme-light {
+  background-color: var(--color-light);
+}
+section.theme-medium-light {
+  background-color: var(--color-medium-light);
+}
+section.theme-dark {
+  background-color: var(--color-dark);
+}
+section.theme-medium-dark {
+  background-color: var(--color-medium-dark);
+}
+section.theme-green {
+  background-color: var(--color-brand-green);
+}
+section.theme-pink {
+  background-color: var(--color-accent-pink);
+}
+section.theme-blue {
+  background-color: var(--color-accent-blue);
+}
+section.theme-orange {
+  background-color: var(--color-accent-orange);
+}
+section.theme-purple {
+  background-color: var(--color-accent-purple);
+}
+
+/* Text inversion on dark/coloured sections */
+section.theme-dark,
+section.theme-medium-dark,
+section.theme-orange,
+section.theme-purple {
+  color: var(--color-white);
+}
+
+/* Btn override on coloured sections -> use dark btn variant */
+section.theme-pink .btn,
+section.theme-blue .btn,
+section.theme-green .btn,
+section.theme-orange .btn,
+section.theme-purple .btn {
+  background-color: var(--btn-dark-bg);
+  color: var(--btn-dark-text);
+  border-color: var(--btn-dark-bg);
+}
+
+section.theme-pink .btn:hover,
+section.theme-blue .btn:hover,
+section.theme-green .btn:hover,
+section.theme-orange .btn:hover,
+section.theme-purple .btn:hover {
+  background-color: var(--btn-dark-bg-hover);
+  color: var(--btn-dark-text-hover);
+  border-color: var(--btn-dark-bg-hover);
+}
+
+/* ============================================
+   BASE COMPONENT STYLES
+   Copy-paste or @apply in Tailwind config
+   ============================================ */
+
+/* Button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 1.8rem;
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  padding: 1.9rem 3.1rem;
+  border-radius: var(--radius-pill);
+  border: 0.2rem solid var(--btn-border);
+  background-color: var(--btn-bg);
+  color: var(--btn-text);
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn:hover,
+.btn:focus-visible {
+  background-color: var(--btn-bg-hover);
+  border-color: var(--btn-border-hover);
+  color: var(--btn-text-hover);
+  outline: 0;
+}
+
+.btn:disabled,
+.btn.disabled {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* Link */
+a {
+  color: var(--color-link);
+  transition: var(--transition);
+}
+
+a:hover,
+a:focus-visible {
+  color: var(--color-link-hover);
+}
+
+/* Selection */
+::selection {
+  background: var(--color-selection-bg);
+  color: var(--color-selection-text);
+}
+
+/* Card */
+.card {
+  background-color: var(--color-bg-surface);
+  border-radius: var(--radius-sm);
+  border: 0.1rem solid var(--color-border);
+  padding: 3.2rem;
+  transition: var(--transition);
+}
+
+.card:hover {
+  background-color: var(--color-brand-green);
+}
+
+/* Input */
+input,
+textarea,
+select {
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-surface);
+  border: 0.1rem solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 1.6rem 1.1rem;
+  width: 100%;
+  transition: var(--transition);
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 0;
+  border-color: var(--color-brand-green);
+}
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --background: 30 11% 97%;
+    --foreground: 0 0% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 0 0% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --popover-foreground: 0 0% 12%;
+    --primary: 74 100% 50%;
+    --primary-foreground: 0 0% 12%;
+    --secondary: 24 13% 93%;
+    --secondary-foreground: 0 0% 12%;
+    --muted: 24 13% 93%;
+    --muted-foreground: 0 0% 33%;
+    --accent: 24 13% 93%;
+    --accent-foreground: 0 0% 12%;
+    --destructive: 2 100% 64%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 80%;
+    --input: 0 0% 80%;
+    --ring: 74 100% 50%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --radius: 0.8rem;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --background: 0 0% 12%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 19%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 19%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 74 100% 50%;
+    --primary-foreground: 0 0% 12%;
+    --secondary: 0 0% 19%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 19%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 0 0% 19%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 2 100% 64%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 32%;
+    --input: 0 0% 32%;
+    --ring: 74 100% 50%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;

@@ -5,13 +5,6 @@ import { CalendarClock, FileText, Send, Timer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Table,
   TableBody,
   TableCell,
@@ -148,18 +141,13 @@ async function ConsultantPageContent({
     ).sort((a, b) => b.localeCompare(a));
 
     return (
-      <Card className="flex min-h-0 flex-col md:h-full md:overflow-hidden">
-          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-2">
-              <CardTitle>My Timesheets</CardTitle>
-              <CardDescription>
-                Review previous submissions and continue drafts before creating a new weekly timesheet.
-              </CardDescription>
-            </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 md:h-full md:overflow-hidden">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <h1 className="text-2xl font-semibold tracking-tight">My Timesheets</h1>
             <CreateTimesheetButton />
-          </CardHeader>
+          </div>
 
-          <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-4">
             <div className="rounded-lg border bg-muted/20 p-3">
               <div className="mb-3 flex items-center gap-2">
                 <CalendarClock className="h-4 w-4 text-blue-600 dark:text-blue-300" />
@@ -286,44 +274,30 @@ async function ConsultantPageContent({
                 </Table>
               </div>
             </div>
-          </CardContent>
-      </Card>
+          </div>
+      </div>
     );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to load timesheets";
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>My Timesheets</CardTitle>
-          <CardDescription>
-            There was a problem loading your timesheets.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="space-y-3">
+          <h1 className="text-2xl font-semibold tracking-tight">My Timesheets</h1>
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {message}
           </p>
-        </CardContent>
-      </Card>
+      </div>
     );
   }
 }
 
 function ConsultantPageSkeleton() {
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2">
-          <CardTitle>My Timesheets</CardTitle>
-          <CardDescription>Loading timesheets...</CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="h-9 w-[180px] rounded-md bg-muted" />
+    <div className="space-y-4">
+      <h1 className="text-2xl font-semibold tracking-tight">My Timesheets</h1>
+      <div className="h-9 w-[180px] rounded-md bg-muted" />
         <div className="h-48 rounded-md border bg-muted/30" />
-      </CardContent>
-    </Card>
+    </div>
   );
 }
