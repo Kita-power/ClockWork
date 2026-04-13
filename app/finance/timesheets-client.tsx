@@ -28,6 +28,14 @@ function toUiStatus(status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function formatDate(date: string): string {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function getStatusBadgeClassName(status: string): string {
   if (status === "approved") {
     return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
@@ -231,7 +239,7 @@ export function FinanceTimesheetsClient({
                               <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                   <p className="font-medium">
-                                    {timesheet.week_start_date} - {timesheet.week_end_date}
+                                    {formatDate(timesheet.week_start_date)} to {formatDate(timesheet.week_end_date)}
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -281,7 +289,7 @@ export function FinanceTimesheetsClient({
                   {selectedTimesheet.consultant_name}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {selectedTimesheet.week_start_date} - {selectedTimesheet.week_end_date}
+                  {formatDate(selectedTimesheet.week_start_date)} to {formatDate(selectedTimesheet.week_end_date)}
                 </p>
               </div>
 
