@@ -29,6 +29,11 @@ function formatDate(date: string): string {
   });
 }
 
+function formatHours(value: number): string {
+  const label = Math.abs(value) === 1 ? "hour" : "hours";
+  return `${value} ${label}`;
+}
+
 function getStatusBadgeClassName(status: string): string {
   if (status === "approved") {
     return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
@@ -104,7 +109,6 @@ export function FinanceTimesheetsClient({
       return;
     }
 
-    setSelectedTimesheetId(null);
     setProcessingTimesheetId(null);
     router.refresh();
   };
@@ -204,7 +208,7 @@ export function FinanceTimesheetsClient({
                           <p className="font-semibold">{group.consultantName}</p>
                           <p className="text-sm text-muted-foreground">
                             {group.timesheets.length} timesheet{group.timesheets.length === 1 ? "" : "s"} -{" "}
-                            {consultantTotalHours.toFixed(2)} hours
+                            {formatHours(Number(consultantTotalHours.toFixed(2)))}
                           </p>
                         </div>
                       </div>
@@ -229,7 +233,7 @@ export function FinanceTimesheetsClient({
                                   </p>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <Badge variant="outline">{timesheet.total_hours} hours</Badge>
+                                  <Badge variant="outline">{formatHours(timesheet.total_hours)}</Badge>
                                   <Badge
                                     variant="outline"
                                     className={getStatusBadgeClassName(timesheet.status)}
