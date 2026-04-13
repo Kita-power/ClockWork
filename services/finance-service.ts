@@ -118,7 +118,14 @@ export const financeService = {
     const now = new Date().toISOString();
     const { error } = await supabase
       .from("timesheets")
-      .update({ status: "processed", processed_at: now, updated_at: now })
+      .update({
+        status: "processed",
+        processed_at: now,
+        export_completed: true,
+        being_processed_by: null,
+        being_processed_at: null,
+        updated_at: now,
+      })
       .eq("id", timesheetId);
 
     if (error) throw new Error(error.message);

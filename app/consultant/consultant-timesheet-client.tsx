@@ -381,11 +381,14 @@ export function ConsultantTimesheetClient({
     timesheet.status === "submitted" ||
     timesheet.status === "submitted_late" ||
     timesheet.status === "approved" ||
-    timesheet.status === "approved_late";
+    timesheet.status === "approved_late" ||
+    timesheet.status === "processed";
   const displayStatus = getConsultantTimesheetDisplayStatus(timesheet.status, timesheet.weekStart);
   const statusLabel = formatConsultantTimesheetStatusLabel(timesheet.status, timesheet.weekStart);
   const readOnlyMessage =
-    timesheet.status === "approved" || timesheet.status === "approved_late"
+    timesheet.status === "processed"
+      ? "This timesheet has been processed and is now read-only."
+      : timesheet.status === "approved" || timesheet.status === "approved_late"
       ? "This timesheet has been approved and is now read-only."
       : timesheet.status === "submitted_late"
           ? "This timesheet was submitted late and is now read-only."
