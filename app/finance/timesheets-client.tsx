@@ -34,6 +34,10 @@ function formatHours(value: number): string {
   return `${value} ${label}`;
 }
 
+function toCsvCell(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
 function getStatusBadgeClassName(status: string): string {
   if (status === "approved") {
     return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
@@ -113,14 +117,14 @@ export function FinanceTimesheetsClient({
     router.refresh();
   };
 
-  const handleExport = () => {
+  const handleExportForConsultant = (consultantName: string, consultantTimesheets: FinanceTimesheetRecord[]) => {
     const headers = ["Consultant", "Week Start", "Week End", "Total Hours", "Status"];
-    const rows = filteredTimesheets.map((ts) => [
-      ts.consultant_name,
-      ts.week_start_date,
-      ts.week_end_date,
-      ts.total_hours.toString(),
-      ts.status,
+    const rows = consultantTimesheets.map((ts) => [
+      toCsvCell(ts.consultant_name),
+      toCsvCell(ts.week_start_date),
+      toCsvCell(ts.week_end_date),
+      toCsvCell(ts.total_hours.toString()),
+      toCsvCell(ts.status),
     ]);
 
     const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
@@ -129,7 +133,8 @@ export function FinanceTimesheetsClient({
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `timesheets_export_${new Date().toISOString().split("T")[0]}.csv`;
+    const safeName = consultantName.trim().replace(/\s+/g, "_").toLowerCase();
+    link.download = `timesheets_export_${safeName}_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
   };
@@ -165,9 +170,6 @@ export function FinanceTimesheetsClient({
               Process approved timesheets and export payroll data.
             </CardDescription>
           </div>
-          <Button type="button" onClick={handleExport}>
-            Export to CSV
-          </Button>
         </CardHeader>
 
         <CardContent className="flex flex-col gap-5">
@@ -195,12 +197,12 @@ export function FinanceTimesheetsClient({
 
                 return (
                   <li key={group.consultantId} className={groupIndex > 0 ? "border-t" : undefined}>
-                    <button
-                      type="button"
-                      onClick={() => toggleConsultantGroup(group.consultantId)}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40"
-                    >
-                      <div className="flex items-center gap-3">
+                    <div className="flex w-full items-center justify-between gap-3 px-4 py-3 hover:bg-muted/40">
+                      <button
+                        type="button"
+                        onClick={() => toggleConsultantGroup(group.consultantId)}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      >
                         <Avatar size="sm">
                           <AvatarFallback>{getConsultantInitials(group.consultantName)}</AvatarFallback>
                         </Avatar>
@@ -211,15 +213,32 @@ export function FinanceTimesheetsClient({
                             {formatHours(Number(consultantTotalHours.toFixed(2)))}
                           </p>
                         </div>
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleExportForConsultant(group.consultantName, group.timesheets)
+                          }
+                        >
+                          Export CSV
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => toggleConsultantGroup(group.consultantId)}
+                          className="text-muted-foreground"
+                          aria-label={isExpanded ? "Collapse consultant timesheets" : "Expand consultant timesheets"}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                          )}
+                        </button>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4" aria-hidden="true" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                        )}
-                      </div>
-                    </button>
+                    </div>
 
                     {isExpanded ? (
                       <ul className="border-t bg-muted/10">
