@@ -248,7 +248,7 @@ async function ConsultantPageContent({
                               <div className="flex justify-end gap-2">
                                 <Button asChild size="sm" variant="outline">
                                   <Link href={`/consultant/timesheets/${timesheet.id}`}>
-                                    {timesheet.status === "draft" ? "Continue" : "View"}
+                                    {timesheet.status === "draft" || timesheet.status === "rejected" ? "Continue" : "View"}
                                   </Link>
                                 </Button>
                                 {timesheet.status === "draft" ? (

@@ -175,6 +175,10 @@ function normalizeTimesheetStatus(value: string | null | undefined): TimesheetSt
   return "draft";
 }
 
+function isEditableTimesheetStatus(status: TimesheetStatus): boolean {
+  return status === "draft" || status === "rejected";
+}
+
 function resolveSubmissionStatus(weekStart: string, submittedAt: Date): TimesheetStatus {
   const weekStartDate = parseIsoDate(weekStart);
   const submissionDeadline = addDays(weekStartDate, 7);
@@ -410,28 +414,6 @@ async function findSubmittedTimesheetByWeekAndProject(
     .eq("week_start_date", weekStart)
     .eq("project_id", projectId)
     .in("status", ["submitted", "submitted_late"])
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data as SupabaseTimesheetRow | null) ?? null;
-}
-
-async function findDraftTimesheetById(
-  consultantId: string,
-  timesheetId: string,
-): Promise<SupabaseTimesheetRow | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("timesheets")
-    .select(
-      "id, consultant_id, week_start_date, week_end_date, status, total_hours, submitted_at, approved_at, processed_at, being_processed_at, export_completed, created_at, updated_at",
-    )
-    .eq("consultant_id", consultantId)
-    .eq("id", timesheetId)
-    .eq("status", "draft")
     .maybeSingle();
 
   if (error) {
@@ -844,16 +826,17 @@ export const consultantService = {
     const existingRecordById = providedTimesheetId
       ? await findTimesheetById(consultantId, providedTimesheetId)
       : null;
+    const existingRecordStatus = normalizeTimesheetStatus(existingRecordById?.status);
+    const existingEditableRecord =
+      existingRecordById && isEditableTimesheetStatus(existingRecordStatus)
+        ? existingRecordById
+        : null;
 
-    if (existingRecordById && normalizeTimesheetStatus(existingRecordById.status) !== "draft") {
+    if (existingRecordById && !existingEditableRecord) {
       throw new Error("This timesheet is locked and can no longer be edited.");
     }
 
-    const existingDraft = providedTimesheetId
-      ? await findDraftTimesheetById(consultantId, providedTimesheetId)
-      : null;
-
-    if (!existingDraft && providedTimesheetId) {
+    if (!existingEditableRecord && providedTimesheetId) {
       const otherDraftRecord = await findDraftTimesheetByWeekAndProject(
         consultantId,
         normalizedWeekStart,
@@ -865,13 +848,13 @@ export const consultantService = {
       }
     }
 
-    const timesheetId = existingDraft?.id ?? providedTimesheetId ?? buildDatabaseTimesheetId();
+    const timesheetId = existingEditableRecord?.id ?? providedTimesheetId ?? buildDatabaseTimesheetId();
 
     await validateCrossTimesheetDailyHourLimit({
       consultantId,
       weekStart: normalizedWeekStart,
       entries: input.entries,
-      excludeTimesheetId: existingDraft?.id,
+      excludeTimesheetId: existingEditableRecord?.id,
     });
 
     const savedAt = new Date().toISOString();
@@ -894,13 +877,13 @@ export const consultantService = {
 
     const supabase = await createClient();
 
-    if (existingDraft) {
+    if (existingEditableRecord) {
       const { error: draftUpdateError } = await supabase
         .from("timesheets")
         .update(draftPayload)
         .eq("id", timesheetId)
         .eq("consultant_id", consultantId)
-        .eq("status", "draft");
+        .in("status", ["draft", "rejected"]);
 
       if (draftUpdateError) {
         throw new Error(draftUpdateError.message);
@@ -993,22 +976,24 @@ export const consultantService = {
     const existingRecordById = providedTimesheetId
       ? await findTimesheetById(consultantId, providedTimesheetId)
       : null;
+    const existingRecordStatus = normalizeTimesheetStatus(existingRecordById?.status);
+    const existingEditableRecord =
+      existingRecordById && isEditableTimesheetStatus(existingRecordStatus)
+        ? existingRecordById
+        : null;
 
-    if (existingRecordById && normalizeTimesheetStatus(existingRecordById.status) !== "draft") {
+    if (existingRecordById && !existingEditableRecord) {
       throw new Error("This timesheet is locked and can no longer be edited.");
     }
 
-    const existingDraft = providedTimesheetId
-      ? await findDraftTimesheetById(consultantId, providedTimesheetId)
-      : null;
-    const timesheetId = existingDraft?.id ?? providedTimesheetId ?? buildDatabaseTimesheetId();
+    const timesheetId = existingEditableRecord?.id ?? providedTimesheetId ?? buildDatabaseTimesheetId();
     const preparedEntries = normalizeSubmittedEntries(input.entries);
 
     await validateCrossTimesheetDailyHourLimit({
       consultantId,
       weekStart: normalizedWeekStart,
       entries: preparedEntries,
-      excludeTimesheetId: existingDraft?.id,
+      excludeTimesheetId: existingEditableRecord?.id,
     });
 
     const timesheetPayload = {
@@ -1030,13 +1015,13 @@ export const consultantService = {
 
     const supabase = await createClient();
 
-    if (existingDraft) {
+    if (existingEditableRecord) {
       const { error: timesheetUpdateError } = await supabase
         .from("timesheets")
         .update(timesheetPayload)
         .eq("id", timesheetId)
         .eq("consultant_id", consultantId)
-        .eq("status", "draft");
+        .in("status", ["draft", "rejected"]);
 
       if (timesheetUpdateError) {
         throw new Error(timesheetUpdateError.message);
@@ -1078,10 +1063,14 @@ export const consultantService = {
     );
 
     if (entriesInsertError) {
-      if (existingDraft) {
+      if (existingEditableRecord) {
         await supabase
           .from("timesheets")
-          .update({ status: "draft", submitted_at: null, updated_at: submittedAt })
+          .update({
+            status: existingEditableRecord.status,
+            submitted_at: existingEditableRecord.submitted_at,
+            updated_at: submittedAt,
+          })
           .eq("id", timesheetId)
           .eq("consultant_id", consultantId);
       } else {
