@@ -184,7 +184,7 @@ export function FinanceTimesheetsClient({
             onChange={(event) => setQuery(event.target.value)}
           />
 
-          <div className="overflow-hidden rounded-md border">
+          <div className="max-h-[62vh] overflow-auto rounded-md border">
             <ul>
               {groupedTimesheets.map((group, groupIndex) => {
                 const isExpanded = isConsultantGroupExpanded(group.consultantId);
