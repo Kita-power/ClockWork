@@ -14,13 +14,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import type { FinanceTimesheetRecord } from "@/services/finance-service";
 import { markTimesheetProcessedAction } from "./actions";
 
@@ -64,7 +57,6 @@ export function FinanceTimesheetsClient({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [selectedTimesheetId, setSelectedTimesheetId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
   const [processingTimesheetId, setProcessingTimesheetId] = useState<string | null>(null);
   const [expandedConsultantIds, setExpandedConsultantIds] = useState<Record<string, boolean>>({});
@@ -99,8 +91,6 @@ export function FinanceTimesheetsClient({
 
     return Array.from(groups.values());
   }, [filteredTimesheets]);
-
-  const selectedTimesheet = timesheets.find((ts) => ts.id === selectedTimesheetId) ?? null;
 
   const handleMarkAsProcessed = async (timesheetId: string) => {
     setErrorMessage(null);
@@ -231,18 +221,14 @@ export function FinanceTimesheetsClient({
                       <ul className="border-t bg-muted/10">
                         {group.timesheets.map((timesheet) => (
                           <li key={timesheet.id} className="border-b last:border-b-0">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedTimesheetId(timesheet.id)}
-                              className="w-full px-4 py-3 text-left hover:bg-muted/40"
-                            >
+                            <div className="px-4 py-3">
                               <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                   <p className="font-medium">
                                     {formatDate(timesheet.week_start_date)} to {formatDate(timesheet.week_end_date)}
                                   </p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                   <Badge variant="outline">{timesheet.total_hours} hours</Badge>
                                   <Badge
                                     variant="outline"
@@ -250,9 +236,21 @@ export function FinanceTimesheetsClient({
                                   >
                                     {toUiStatus(timesheet.status)}
                                   </Badge>
+                                  {timesheet.status === "approved" ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleMarkAsProcessed(timesheet.id)}
+                                      disabled={processingTimesheetId === timesheet.id}
+                                    >
+                                      {processingTimesheetId === timesheet.id
+                                        ? "Marking as Processed..."
+                                        : "Mark as Processed"}
+                                    </Button>
+                                  ) : null}
                                 </div>
                               </div>
-                            </button>
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -270,56 +268,6 @@ export function FinanceTimesheetsClient({
         </CardContent>
       </Card>
 
-      <Sheet
-        open={Boolean(selectedTimesheet)}
-        onOpenChange={(open) => {
-          if (!open) setSelectedTimesheetId(null);
-        }}
-      >
-        <SheetContent className="w-full overflow-y-auto px-6 sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Timesheet Details</SheetTitle>
-            <SheetDescription>Review and process timesheet.</SheetDescription>
-          </SheetHeader>
-
-          {selectedTimesheet ? (
-            <div className="mt-6 flex flex-col gap-5">
-              <div>
-                <p className="text-2xl font-semibold tracking-tight">
-                  {selectedTimesheet.consultant_name}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(selectedTimesheet.week_start_date)} to {formatDate(selectedTimesheet.week_end_date)}
-                </p>
-              </div>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground">Total Hours</p>
-                  <p className="mt-1 font-semibold">{selectedTimesheet.total_hours}</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <p className="mt-1 font-semibold">{toUiStatus(selectedTimesheet.status)}</p>
-                </CardContent>
-              </Card>
-
-              <Button
-                type="button"
-                disabled={processingTimesheetId === selectedTimesheet.id}
-                onClick={() => handleMarkAsProcessed(selectedTimesheet.id)}
-              >
-                {processingTimesheetId === selectedTimesheet.id
-                  ? "Marking as Processed..."
-                  : "Mark as Processed"}
-              </Button>
-            </div>
-          ) : null}
-        </SheetContent>
-      </Sheet>
     </>
   );
 }
