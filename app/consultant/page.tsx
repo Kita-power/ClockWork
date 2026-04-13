@@ -50,11 +50,6 @@ function getCurrentIsoMonth(): string {
   return `${now.getFullYear()}-${month}`;
 }
 
-function truncateTimesheetId(id: string): string {
-  if (id.length <= 10) return id;
-  return `${id.slice(0, 6)}...${id.slice(-4)}`;
-}
-
 function getStatusBadgeClassName(status: string): string {
   if (status === "approved" || status === "approved_late") {
     return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
@@ -206,7 +201,6 @@ async function ConsultantPageContent({
                 <Table className="min-w-[760px]">
                 <TableHeader className="sticky top-0 z-20 bg-card">
                   <TableRow>
-                    <TableHead className="bg-card">Timesheet ID</TableHead>
                     <TableHead className="bg-card">Week</TableHead>
                     <TableHead className="bg-card">Project Code</TableHead>
                     <TableHead className="bg-card">Status</TableHead>
@@ -218,14 +212,14 @@ async function ConsultantPageContent({
                 <TableBody>
                   {filteredTimesheets.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
                         No timesheets found for this month.
                       </TableCell>
                     </TableRow>
                   ) : (
                     groupedTimesheets.flatMap(([monthKey, monthTimesheets]) => [
                       <TableRow key={`month-${monthKey}`} className="bg-muted/40 hover:bg-muted/40">
-                        <TableCell colSpan={7} className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <TableCell colSpan={6} className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           {formatMonthLabel(monthKey)}
                         </TableCell>
                       </TableRow>,
@@ -237,9 +231,6 @@ async function ConsultantPageContent({
 
                         return (
                           <TableRow key={timesheet.id}>
-                            <TableCell className="font-mono text-xs" title={timesheet.id}>
-                              {truncateTimesheetId(timesheet.id)}
-                            </TableCell>
                             <TableCell>
                               {formatDate(timesheet.weekStart)} to {formatDate(timesheet.weekEnd)}
                             </TableCell>
