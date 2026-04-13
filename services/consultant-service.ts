@@ -419,28 +419,6 @@ async function findSubmittedTimesheetByWeekAndProject(
   return (data as SupabaseTimesheetRow | null) ?? null;
 }
 
-async function findDraftTimesheetByWeekStart(
-  consultantId: string,
-  weekStart: string,
-): Promise<SupabaseTimesheetRow | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("timesheets")
-    .select(
-      "id, consultant_id, week_start_date, week_end_date, status, total_hours, submitted_at, approved_at, processed_at, being_processed_at, export_completed, created_at, updated_at",
-    )
-    .eq("consultant_id", consultantId)
-    .eq("week_start_date", weekStart)
-    .eq("status", "draft")
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data as SupabaseTimesheetRow | null) ?? null;
-}
-
 async function findDraftTimesheetById(
   consultantId: string,
   timesheetId: string,
@@ -680,6 +658,86 @@ function validateTimesheetEntries(entries: WeeklyTimesheetEntry[]): void {
   }
 }
 
+function buildHoursByDate(entries: WeeklyTimesheetEntry[]): Map<string, number> {
+  const totals = new Map<string, number>();
+
+  for (const entry of entries) {
+    const hours = Number.isFinite(entry.hours) ? entry.hours : 0;
+    totals.set(entry.date, (totals.get(entry.date) ?? 0) + hours);
+  }
+
+  return totals;
+}
+
+function formatDaySummary(date: string): string {
+  const parsed = parseIsoDate(date);
+  const day = parsed.toLocaleDateString("en-US", { weekday: "short" });
+  return `${day} (${date})`;
+}
+
+async function validateCrossTimesheetDailyHourLimit(params: {
+  consultantId: string;
+  weekStart: string;
+  entries: WeeklyTimesheetEntry[];
+  excludeTimesheetId?: string;
+}): Promise<void> {
+  const { consultantId, weekStart, entries, excludeTimesheetId } = params;
+  const requestedHoursByDate = buildHoursByDate(entries);
+
+  const supabase = await createClient();
+  let timesheetQuery = supabase
+    .from("timesheets")
+    .select("id")
+    .eq("consultant_id", consultantId)
+    .eq("week_start_date", weekStart);
+
+  if (excludeTimesheetId) {
+    timesheetQuery = timesheetQuery.neq("id", excludeTimesheetId);
+  }
+
+  const { data: timesheetRows, error: timesheetRowsError } = await timesheetQuery;
+
+  if (timesheetRowsError) {
+    throw new Error(timesheetRowsError.message);
+  }
+
+  const otherTimesheetIds = (timesheetRows ?? [])
+    .map((row) => row.id)
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+
+  if (otherTimesheetIds.length === 0) {
+    return;
+  }
+
+  const { data: existingEntries, error: existingEntriesError } = await supabase
+    .from("time_entries")
+    .select("entry_date, hours")
+    .in("timesheet_id", otherTimesheetIds);
+
+  if (existingEntriesError) {
+    throw new Error(existingEntriesError.message);
+  }
+
+  const existingHoursByDate = new Map<string, number>();
+  for (const entry of (existingEntries ?? []) as Array<Pick<SupabaseTimeEntryRow, "entry_date" | "hours">>) {
+    const hours = toNumber(entry.hours);
+    existingHoursByDate.set(entry.entry_date, (existingHoursByDate.get(entry.entry_date) ?? 0) + hours);
+  }
+
+  for (const [date, requestedHours] of requestedHoursByDate.entries()) {
+    const alreadyLoggedHours = existingHoursByDate.get(date) ?? 0;
+    const totalHours = alreadyLoggedHours + requestedHours;
+
+    if (totalHours > 24) {
+      const maxAdditionalHours = Math.max(0, 24 - alreadyLoggedHours);
+      throw new Error(
+        `Total logged hours for ${formatDaySummary(date)} cannot exceed 24 across all project timesheets. ` +
+          `You already have ${alreadyLoggedHours}h on other timesheets, so this timesheet can add up to ${maxAdditionalHours}h for that day.`,
+      );
+    }
+  }
+}
+
 export const consultantService = {
   description:
     "Handles consultant workflows such as draft, submit, and resubmit timesheets.",
@@ -808,6 +866,13 @@ export const consultantService = {
     }
 
     const timesheetId = existingDraft?.id ?? providedTimesheetId ?? buildDatabaseTimesheetId();
+
+    await validateCrossTimesheetDailyHourLimit({
+      consultantId,
+      weekStart: normalizedWeekStart,
+      entries: input.entries,
+      excludeTimesheetId: existingDraft?.id,
+    });
 
     const savedAt = new Date().toISOString();
     const draftPayload = {
@@ -938,6 +1003,13 @@ export const consultantService = {
       : null;
     const timesheetId = existingDraft?.id ?? providedTimesheetId ?? buildDatabaseTimesheetId();
     const preparedEntries = normalizeSubmittedEntries(input.entries);
+
+    await validateCrossTimesheetDailyHourLimit({
+      consultantId,
+      weekStart: normalizedWeekStart,
+      entries: preparedEntries,
+      excludeTimesheetId: existingDraft?.id,
+    });
 
     const timesheetPayload = {
       id: timesheetId,

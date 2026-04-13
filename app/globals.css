@@ -357,6 +357,42 @@ select:focus-visible {
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
+
+  .theme-system.theme-system-dark {
+    /* Slightly cooler dark palette so System mode is distinct from manual Dark. */
+    --background: 215 14% 15%;
+    --card: 215 13% 20%;
+    --popover: 215 13% 20%;
+    --secondary: 215 12% 20%;
+    --muted: 215 12% 20%;
+    --accent: 215 12% 20%;
+    --border: 215 10% 34%;
+    --input: 215 10% 34%;
+    --muted-foreground: 0 0% 74%;
+
+    --color-bg-page: #20262d;
+    --color-bg-surface: #2a3138;
+    --color-bg-subtle: #252b33;
+    --color-border: rgba(255, 255, 255, 0.14);
+    --color-border-strong: rgba(255, 255, 255, 0.32);
+  }
+
+  .theme-system.theme-system-light {
+    /* Slightly cooler light palette so System mode is distinct from manual Light. */
+    --background: 210 18% 96%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --secondary: 210 18% 92%;
+    --muted: 210 18% 92%;
+    --accent: 210 18% 92%;
+    --border: 210 8% 76%;
+    --input: 210 8% 76%;
+
+    --color-bg-page: #f1f4f7;
+    --color-bg-subtle: #e4e9ee;
+    --color-border: rgba(30, 42, 56, 0.2);
+    --color-border-strong: rgba(30, 42, 56, 0.35);
+  }
 }
 
 @layer base {

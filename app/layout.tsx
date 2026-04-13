@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Manrope } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { ThemeModeClassSync } from "@/components/theme-mode-class-sync";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -52,6 +53,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <ThemeModeClassSync />
           {children}
         </ThemeProvider>
       </body>

@@ -320,7 +320,12 @@ export function RoleTopbarLayout({
       <header className="shrink-0 bg-background">
         <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-3 py-4 md:px-5">
           <div className="min-w-0">
-            <div className="flex items-center gap-3">
+            <Link
+              href={overviewPath}
+              prefetch={false}
+              aria-label="Go to overview"
+              className="inline-flex items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
               <h1 className="text-3xl font-semibold tracking-tight">Clockwork</h1>
               <span aria-hidden="true" className="text-3xl leading-none text-muted-foreground">
                 |
@@ -339,7 +344,7 @@ export function RoleTopbarLayout({
                 height={23}
                 className="hidden h-6 w-auto dark:block"
               />
-            </div>
+            </Link>
             {navItems.length > 1 ? (
               <Tabs value={tabsValue} className="mt-3">
                 <TabsList>
