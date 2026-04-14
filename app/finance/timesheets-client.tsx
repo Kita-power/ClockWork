@@ -13,9 +13,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { FinanceTimesheetRecord } from "@/services/finance-service";
-import { markTimesheetProcessedAction } from "./actions";
+import { markTimesheetProcessedAction, markTimesheetsExportedAction } from "./actions";
 
 function toUiStatus(status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
@@ -68,6 +76,8 @@ export function FinanceTimesheetsClient({
   const [query, setQuery] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError);
   const [processingTimesheetId, setProcessingTimesheetId] = useState<string | null>(null);
+  const [exportingConsultantId, setExportingConsultantId] = useState<string | null>(null);
+  const [timesheetToMarkId, setTimesheetToMarkId] = useState<string | null>(null);
   const [expandedConsultantIds, setExpandedConsultantIds] = useState<Record<string, boolean>>({});
 
   const filteredTimesheets = timesheets.filter((timesheet) => {
@@ -101,11 +111,13 @@ export function FinanceTimesheetsClient({
     return Array.from(groups.values());
   }, [filteredTimesheets]);
 
-  const handleMarkAsProcessed = async (timesheetId: string) => {
-    setErrorMessage(null);
-    setProcessingTimesheetId(timesheetId);
+  const handleMarkAsProcessed = async () => {
+    if (!timesheetToMarkId) return;
 
-    const result = await markTimesheetProcessedAction({ timesheetId });
+    setErrorMessage(null);
+    setProcessingTimesheetId(timesheetToMarkId);
+
+    const result = await markTimesheetProcessedAction({ timesheetId: timesheetToMarkId });
 
     if (!result.ok) {
       setErrorMessage(result.error);
@@ -113,11 +125,19 @@ export function FinanceTimesheetsClient({
       return;
     }
 
+    setTimesheetToMarkId(null);
     setProcessingTimesheetId(null);
     router.refresh();
   };
 
-  const handleExportForConsultant = (consultantName: string, consultantTimesheets: FinanceTimesheetRecord[]) => {
+  const handleExportForConsultant = async (
+    consultantId: string,
+    consultantName: string,
+    consultantTimesheets: FinanceTimesheetRecord[],
+  ) => {
+    setErrorMessage(null);
+    setExportingConsultantId(consultantId);
+
     const headers = ["Consultant", "Week Start", "Week End", "Total Hours", "Status"];
     const rows = consultantTimesheets.map((ts) => [
       toCsvCell(ts.consultant_name),
@@ -137,6 +157,25 @@ export function FinanceTimesheetsClient({
     link.download = `timesheets_export_${safeName}_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
+
+    const timesheetIdsToMarkExported = consultantTimesheets
+      .filter((timesheet) => !timesheet.export_completed)
+      .map((timesheet) => timesheet.id);
+
+    if (timesheetIdsToMarkExported.length > 0) {
+      const result = await markTimesheetsExportedAction({
+        timesheetIds: timesheetIdsToMarkExported,
+      });
+
+      if (!result.ok) {
+        setErrorMessage(result.error);
+        setExportingConsultantId(null);
+        return;
+      }
+    }
+
+    setExportingConsultantId(null);
+    router.refresh();
   };
 
   const toggleConsultantGroup = (consultantId: string) => {
@@ -220,10 +259,17 @@ export function FinanceTimesheetsClient({
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            handleExportForConsultant(group.consultantName, group.timesheets)
+                            handleExportForConsultant(
+                              group.consultantId,
+                              group.consultantName,
+                              group.timesheets,
+                            )
                           }
+                          disabled={exportingConsultantId === group.consultantId}
                         >
-                          Export CSV
+                          {exportingConsultantId === group.consultantId
+                            ? "Exporting..."
+                            : "Export CSV"}
                         </Button>
                         <button
                           type="button"
@@ -263,8 +309,16 @@ export function FinanceTimesheetsClient({
                                     <Button
                                       type="button"
                                       size="sm"
-                                      onClick={() => handleMarkAsProcessed(timesheet.id)}
-                                      disabled={processingTimesheetId === timesheet.id}
+                                      onClick={() => setTimesheetToMarkId(timesheet.id)}
+                                      disabled={
+                                        processingTimesheetId === timesheet.id ||
+                                        !timesheet.export_completed
+                                      }
+                                      title={
+                                        timesheet.export_completed
+                                          ? ""
+                                          : "Export this consultant's CSV before marking as processed"
+                                      }
                                     >
                                       {processingTimesheetId === timesheet.id
                                         ? "Marking as Processed..."
@@ -290,6 +344,36 @@ export function FinanceTimesheetsClient({
           </div>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={timesheetToMarkId !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && !processingTimesheetId) {
+            setTimesheetToMarkId(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark this timesheet as processed?</DialogTitle>
+            <DialogDescription>
+              This will move the timesheet to processed and close finance handling for it.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setTimesheetToMarkId(null)}
+              disabled={Boolean(processingTimesheetId)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleMarkAsProcessed} disabled={Boolean(processingTimesheetId)}>
+              {processingTimesheetId ? "Marking as Processed..." : "Yes, mark as processed"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </>
   );

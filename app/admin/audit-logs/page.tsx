@@ -32,6 +32,7 @@ const actionLabelMap: Record<string, string> = {
   "manager.timesheet.reject": "Manager rejected timesheet",
   "manager.leave_request.approve": "Manager approved leave request",
   "manager.leave_request.reject": "Manager rejected leave request",
+  "finance.timesheet.export": "Finance exported timesheet CSV",
   "finance.timesheet.mark_processed": "Finance marked timesheet as processed",
   "consultant.timesheet.save_draft": "Consultant saved timesheet draft",
   "consultant.timesheet.submit": "Consultant submitted timesheet",
@@ -89,7 +90,7 @@ function matchesActionTypeFilter(action: string, selectedActionType: string): bo
     case "Timesheet Rejection":
       return action === "manager.timesheet.reject";
     case "Timesheet Export":
-      return action === "consultant.timesheet.save_draft";
+      return action === "finance.timesheet.export";
     case "Finance Processing":
       return action === "finance.timesheet.mark_processed";
     default:

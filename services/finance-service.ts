@@ -113,15 +113,44 @@ export const financeService = {
     if (error) throw new Error(error.message);
   },
 
+  async markAsExported(timesheetIds: string[]): Promise<void> {
+    const supabase = await createClient();
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from("timesheets")
+      .update({
+        export_completed: true,
+        updated_at: now,
+      })
+      .in("id", timesheetIds)
+      .eq("status", "approved");
+
+    if (error) throw new Error(error.message);
+  },
+
   async markAsProcessed(timesheetId: string): Promise<void> {
     const supabase = await createClient();
+    const { data: timesheetRow, error: readError } = await supabase
+      .from("timesheets")
+      .select("status, export_completed")
+      .eq("id", timesheetId)
+      .maybeSingle<{ status: string; export_completed: boolean | null }>();
+
+    if (readError) throw new Error(readError.message);
+    if (!timesheetRow) throw new Error("Timesheet not found.");
+    if (timesheetRow.status !== "approved") {
+      throw new Error("Only approved timesheets can be marked as processed.");
+    }
+    if (!timesheetRow.export_completed) {
+      throw new Error("Export this timesheet before marking it as processed.");
+    }
+
     const now = new Date().toISOString();
     const { error } = await supabase
       .from("timesheets")
       .update({
         status: "processed",
         processed_at: now,
-        export_completed: true,
         being_processed_by: null,
         being_processed_at: null,
         updated_at: now,
