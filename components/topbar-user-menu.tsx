@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { clearNotificationState } from "@/lib/notification-center";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ export function TopbarUserMenu({ userName, roleLabel }: TopbarUserMenuProps) {
   function signOut() {
     startTransition(async () => {
       const supabase = createClient();
+      clearNotificationState();
       await supabase.auth.signOut();
       router.push("/");
       router.refresh();
