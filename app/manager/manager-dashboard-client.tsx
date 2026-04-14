@@ -137,10 +137,6 @@ export function ManagerDashboardClient({
     <Card>
       <CardHeader>
         <CardTitle>Manager review dashboard</CardTitle>
-        <CardDescription>
-          Review submitted timesheets. Prototype actions are currently
-          simulated in the UI.
-        </CardDescription>
       </CardHeader>
 
       <CardContent>
