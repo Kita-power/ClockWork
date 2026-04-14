@@ -79,6 +79,7 @@ export function FinanceTimesheetsClient({
   const [exportingConsultantId, setExportingConsultantId] = useState<string | null>(null);
   const [timesheetToMarkId, setTimesheetToMarkId] = useState<string | null>(null);
   const [expandedConsultantIds, setExpandedConsultantIds] = useState<Record<string, boolean>>({});
+  const [sessionExportedTimesheetIds, setSessionExportedTimesheetIds] = useState<Set<string>>(new Set());
 
   const filteredTimesheets = timesheets.filter((timesheet) => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -173,6 +174,13 @@ export function FinanceTimesheetsClient({
         return;
       }
     }
+
+    // Track all timesheets for this consultant as exported in this session
+    setSessionExportedTimesheetIds((prev) => {
+      const next = new Set(prev);
+      consultantTimesheets.forEach((ts) => next.add(ts.id));
+      return next;
+    });
 
     setExportingConsultantId(null);
     router.refresh();
@@ -312,10 +320,10 @@ export function FinanceTimesheetsClient({
                                       onClick={() => setTimesheetToMarkId(timesheet.id)}
                                       disabled={
                                         processingTimesheetId === timesheet.id ||
-                                        !timesheet.export_completed
+                                        !sessionExportedTimesheetIds.has(timesheet.id)
                                       }
                                       title={
-                                        timesheet.export_completed
+                                        sessionExportedTimesheetIds.has(timesheet.id)
                                           ? ""
                                           : "Export this consultant's CSV before marking as processed"
                                       }
