@@ -6,14 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -71,7 +63,75 @@ function formatActionLabel(
   return normalized.length > 0 ? toTitleCase(normalized) : "Unknown action";
 }
 
-export default function AdminAuditLogsPage() {
+type AuditLogFilters = {
+  searchText: string;
+  fromDate: string;
+  toDate: string;
+  actionType: string;
+};
+
+function matchesActionTypeFilter(action: string, selectedActionType: string): boolean {
+  if (selectedActionType === actionTypeFilters[0]) {
+    return true;
+  }
+
+  switch (selectedActionType) {
+    case "Account Changes":
+      return action.startsWith("admin.user.");
+    case "Project Changes":
+      return action.startsWith("admin.project.");
+    case "Role Assignments":
+      return action === "admin.project.assign_consultant" || action === "admin.project.remove_consultant";
+    case "Timesheet Submission":
+      return action === "consultant.timesheet.submit";
+    case "Timesheet Approval":
+      return action === "manager.timesheet.approve";
+    case "Timesheet Rejection":
+      return action === "manager.timesheet.reject";
+    case "Timesheet Export":
+      return action === "consultant.timesheet.save_draft";
+    case "Finance Processing":
+      return action === "finance.timesheet.mark_processed";
+    default:
+      return true;
+  }
+}
+
+function normalizeDateInput(value?: string): string {
+  if (!value) return "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+}
+
+function resolveFilters(searchParams?: Record<string, string | string[] | undefined>): AuditLogFilters {
+  const searchTextRaw = searchParams?.searchText;
+  const fromDateRaw = searchParams?.fromDate;
+  const toDateRaw = searchParams?.toDate;
+  const actionTypeRaw = searchParams?.actionType;
+  const searchText = (Array.isArray(searchTextRaw) ? searchTextRaw[0] : searchTextRaw ?? "").trim();
+  const fromDate = normalizeDateInput(Array.isArray(fromDateRaw) ? fromDateRaw[0] : fromDateRaw);
+  const toDate = normalizeDateInput(Array.isArray(toDateRaw) ? toDateRaw[0] : toDateRaw);
+  const requestedActionType = (Array.isArray(actionTypeRaw) ? actionTypeRaw[0] : actionTypeRaw ?? "").trim();
+  const actionType =
+    requestedActionType.length > 0 && actionTypeFilters.includes(requestedActionType)
+      ? requestedActionType
+      : actionTypeFilters[0];
+
+  return {
+    searchText,
+    fromDate,
+    toDate,
+    actionType,
+  };
+}
+
+export default async function AdminAuditLogsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const filters = resolveFilters(resolvedSearchParams);
+
   return (
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-end justify-between gap-4">
@@ -88,48 +148,68 @@ export default function AdminAuditLogsPage() {
       </CardHeader>
 
       <CardContent className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="audit-actor-search">Actor</Label>
-            <Input
-              id="audit-actor-search"
-              type="text"
-              placeholder="Search by actor name or email"
-            />
+        <form method="get" className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="audit-actor-search">Actor</Label>
+              <Input
+                id="audit-actor-search"
+                name="searchText"
+                type="text"
+                placeholder="Search by actor name or email"
+                defaultValue={filters.searchText}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="audit-date-from">From</Label>
+              <Input
+                id="audit-date-from"
+                name="fromDate"
+                type="date"
+                defaultValue={filters.fromDate}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="audit-date-to">To</Label>
+              <Input
+                id="audit-date-to"
+                name="toDate"
+                type="date"
+                defaultValue={filters.toDate}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="audit-action-type">Action Type</Label>
+              <select
+                id="audit-action-type"
+                name="actionType"
+                defaultValue={filters.actionType}
+                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              >
+                {actionTypeFilters.map((actionType) => (
+                  <option key={actionType} value={actionType}>
+                    {actionType}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="audit-date-from">From</Label>
-            <Input id="audit-date-from" type="date" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="submit" size="sm">
+              Apply Filters
+            </Button>
+            <Button type="button" size="sm" variant="outline" asChild>
+              <a href="/admin/audit-logs">Reset</a>
+            </Button>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="audit-date-to">To</Label>
-            <Input id="audit-date-to" type="date" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="audit-action-type">Action Type</Label>
-            <Select defaultValue={actionTypeFilters[0]}>
-              <SelectTrigger id="audit-action-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {actionTypeFilters.map((actionType) => (
-                    <SelectItem key={actionType} value={actionType}>
-                      {actionType}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        </form>
         <p className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-900 dark:text-sky-200">
           Export is not available yet. Use filters to narrow the on-screen audit
           history.
         </p>
 
         <Suspense fallback={<AuditLogsTableLoading />}>
-          <AuditLogsTableSection />
+          <AuditLogsTableSection filters={filters} />
         </Suspense>
 
         <p className="rounded-md border border-sky-500/20 bg-sky-500/5 p-4 text-sm text-sky-900 dark:text-sky-200">
@@ -150,12 +230,19 @@ function AuditLogsTableLoading() {
   );
 }
 
-async function AuditLogsTableSection() {
+async function AuditLogsTableSection({ filters }: { filters: AuditLogFilters }) {
   let rows: Awaited<ReturnType<typeof adminService.listAuditLogs>> = [];
   let loadError: string | null = null;
 
   try {
-    rows = await adminService.listAuditLogs({ limit_count: 200 });
+    rows = await adminService.listAuditLogs({
+      search_text: filters.searchText || null,
+      from_date: filters.fromDate || null,
+      to_date: filters.toDate || null,
+      action_filter: null,
+      limit_count: 200,
+    });
+    rows = rows.filter((row) => matchesActionTypeFilter(row.action, filters.actionType));
   } catch (error) {
     loadError =
       error instanceof Error ? error.message : "Unable to load audit logs";
