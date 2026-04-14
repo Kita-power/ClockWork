@@ -210,9 +210,9 @@ async function ConsultantPageContent({
             />
 
             <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-              <div className="h-full overflow-x-auto">
-                <Table className="min-w-[760px]">
-                <TableHeader className="sticky top-0 z-20 bg-card">
+              <div className="h-full">
+                <Table className="w-full md:min-w-[760px]">
+                <TableHeader className="sticky top-0 z-20 hidden bg-card md:table-header-group">
                   <TableRow>
                     <TableHead className="bg-card">Week</TableHead>
                     <TableHead className="bg-card">Project</TableHead>
@@ -243,25 +243,52 @@ async function ConsultantPageContent({
                         );
 
                         return (
-                          <TableRow key={timesheet.id}>
-                            <TableCell>
+                          <TableRow
+                            key={timesheet.id}
+                            className="grid grid-cols-3 gap-x-2 gap-y-1 border-b px-2 py-2 md:table-row md:px-0 md:py-0"
+                          >
+                            <TableCell className="py-3 align-top whitespace-normal md:py-2">
+                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                                Week
+                              </p>
                               {formatDate(timesheet.weekStart)} to {formatDate(timesheet.weekEnd)}
                             </TableCell>
-                            <TableCell className="font-medium">
+                            <TableCell className="py-3 align-top whitespace-normal md:py-2">
+                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                                Project
+                              </p>
+                              <div className="font-medium">
                               {timesheet.projectCode
                                 ? projectNameByCode.get(normalizeProjectCode(timesheet.projectCode)) ??
                                   timesheet.projectCode
                                 : "-"}
+                              </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-3 align-top whitespace-normal md:py-2">
+                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                                Status
+                              </p>
                               <Badge variant="outline" className={getStatusBadgeClassName(displayStatus)}>
                                 {formatConsultantTimesheetStatusLabel(timesheet.status, timesheet.weekStart)}
                               </Badge>
                             </TableCell>
-                            <TableCell>{timesheet.totalHours.toFixed(2)}</TableCell>
-                            <TableCell>{formatDateTime(timesheet.updatedAt)}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
+                            <TableCell className="py-3 align-top whitespace-normal md:py-2">
+                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                                Total Hours
+                              </p>
+                              {timesheet.totalHours.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="py-3 align-top whitespace-normal md:py-2">
+                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                                Last Updated
+                              </p>
+                              {formatDateTime(timesheet.updatedAt)}
+                            </TableCell>
+                            <TableCell className="py-3 align-top whitespace-normal text-left md:py-2 md:text-right">
+                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                                Action
+                              </p>
+                              <div className="flex flex-wrap justify-start gap-2 md:justify-end">
                                 <Button asChild size="sm" variant="outline">
                                   <Link href={`/consultant/timesheets/${timesheet.id}`}>
                                     {timesheet.status === "draft" || timesheet.status === "rejected" ? "Continue" : "View"}

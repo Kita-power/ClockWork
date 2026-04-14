@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationButton } from "@/components/ui/notif-button";
 import type { Notification } from "@/components/ui/notif-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { useTheme } from "next-themes";
 import { useUser } from "@/hooks/use-user";
 import { formatRoleLabel } from "@/lib/format-role-label";
 import { createClient } from "@/lib/supabase/client";
@@ -101,10 +102,19 @@ export function RoleTopbarLayout({
   const navItems = [{ label: "Overview", href: overviewPath }];
   const tabsValue = pathname.startsWith(overviewPath) ? overviewPath : pathname;
   const isOverviewPage = pathname === overviewPath;
+  const { theme, setTheme } = useTheme();
   const { id: userId, fullName, email, role, isLoading, isAuthenticated } = useUser();
   const displayName = fullName.trim() || email || "User";
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    if (!isOverviewPage || theme !== "system") {
+      return;
+    }
+
+    setTheme("dark");
+  }, [isOverviewPage, theme, setTheme]);
 
   useEffect(() => {
     setNotifications(loadNotifications().map(toUiNotification));
@@ -324,10 +334,15 @@ export function RoleTopbarLayout({
               href={overviewPath}
               prefetch={false}
               aria-label="Go to overview"
-              className="inline-flex items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex items-center gap-2 sm:gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <h1 className="clockwork-branding text-3xl font-semibold tracking-tight">ClockWork</h1>
-              <span aria-hidden="true" className="text-3xl leading-none text-muted-foreground">
+              <h1 className="clockwork-branding text-xl font-semibold tracking-tight sm:text-3xl">
+                ClockWork
+              </h1>
+              <span
+                aria-hidden="true"
+                className="text-base leading-none text-muted-foreground sm:text-3xl"
+              >
                 |
               </span>
               <Image
@@ -335,14 +350,14 @@ export function RoleTopbarLayout({
                 alt="FDM logo"
                 width={72}
                 height={23}
-                className="h-6 w-auto dark:hidden"
+                className="h-3 w-auto sm:h-6 dark:hidden"
               />
               <Image
                 src="/fdm-logo-dark.svg"
                 alt="FDM logo"
                 width={72}
                 height={23}
-                className="hidden h-6 w-auto dark:block"
+                className="hidden h-3 w-auto sm:h-6 dark:block"
               />
             </Link>
             {navItems.length > 1 ? (

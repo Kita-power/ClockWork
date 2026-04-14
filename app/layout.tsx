@@ -49,7 +49,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${manrope.variable} body-md antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >

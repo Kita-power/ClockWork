@@ -1025,13 +1025,13 @@ export function ConsultantTimesheetClient({
             </Select>
           </div>
 
-          <Table className="table-fixed">
+          <Table className="w-full md:table-fixed">
             <colgroup>
-              <col className="w-[96px]" />
-              <col className="w-[76px]" />
+              <col className="md:w-[96px]" />
+              <col className="md:w-[76px]" />
               <col />
             </colgroup>
-            <TableHeader>
+            <TableHeader className="hidden md:table-header-group">
               <TableRow>
                 <TableHead className="px-2">Day</TableHead>
                 <TableHead className="px-2">Hours</TableHead>
@@ -1044,7 +1044,10 @@ export function ConsultantTimesheetClient({
               {timesheet.entries.map((entry, index) => (
                 <Fragment key={entry.date}>
                   <TableRow key={entry.date}>
-                    <TableCell className="px-2">
+                    <TableCell className="px-2 py-3 align-top whitespace-normal md:py-2">
+                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                        Day
+                      </p>
                       <div className="flex items-center gap-2">
                         <div className="min-w-0">
                           <div className="font-medium">{entry.dayLabel}</div>
@@ -1054,19 +1057,25 @@ export function ConsultantTimesheetClient({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="px-2">
+                    <TableCell className="px-2 py-3 align-top whitespace-normal md:py-2">
+                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                        Hours
+                      </p>
                       <div className="font-medium tabular-nums">
                         {entry.hours.toFixed(2)}
                       </div>
                     </TableCell>
-                    <TableCell className="px-2 align-top whitespace-normal">
-                      <div className="relative w-full py-1">
-                        <p className="text-center text-xs leading-4 text-muted-foreground whitespace-normal break-words pr-20">
+                    <TableCell className="px-2 py-3 align-top whitespace-normal md:py-2">
+                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                        Tasks
+                      </p>
+                      <div className="w-full py-1">
+                        <p className="pr-0 text-left text-xs leading-5 text-muted-foreground whitespace-normal break-words md:pr-20 md:text-center md:leading-4">
                           {(entry.tasks ?? []).length === 0
                             ? "No tasks yet. Add one to break down this day."
                             : `${(entry.tasks ?? []).length} ${(entry.tasks ?? []).length === 1 ? "Task" : "Tasks"}`}
                         </p>
-                        <div className="absolute inset-y-0 right-0 flex items-center justify-end">
+                        <div className="mt-2 flex justify-start md:absolute md:inset-y-0 md:right-0 md:mt-0 md:items-center md:justify-end">
                           <Button
                             type="button"
                             variant="ghost"
