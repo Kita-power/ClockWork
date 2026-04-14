@@ -1069,7 +1069,7 @@ export function ConsultantTimesheetClient({
                       <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
                         Tasks
                       </p>
-                      <div className="w-full py-1 md:relative">
+                      <div className="relative w-full py-1">
                         <p className="pr-0 text-left text-xs leading-5 text-muted-foreground whitespace-normal break-words md:pr-20 md:text-center md:leading-4">
                           {(entry.tasks ?? []).length === 0
                             ? "No tasks yet. Add one to break down this day."
