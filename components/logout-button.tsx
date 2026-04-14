@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { clearNotificationState } from "@/lib/notification-center";
 
 type LogoutButtonProps = {
   redirectTo?: string;
@@ -17,6 +18,7 @@ export function LogoutButton({
 
   const logout = async () => {
     const supabase = createClient();
+    clearNotificationState();
     await supabase.auth.signOut();
     router.push(redirectTo);
   };

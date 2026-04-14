@@ -142,3 +142,12 @@ export function appendNotification(notification: StoredNotification): void {
     }),
   );
 }
+
+export function clearNotificationState(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(NOTIFICATION_STORAGE_KEY);
+  window.localStorage.removeItem(NOTIFIED_TIMESHEETS_KEY);
+}
