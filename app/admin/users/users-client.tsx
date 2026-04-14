@@ -133,6 +133,20 @@ export function AdminUsersClient({
       return matchesQuery && matchesRole && matchesStatus;
     });
   }, [query, roleFilter, statusFilter, users]);
+  const groupedUsersByRole = useMemo(
+    () =>
+      roleOptions
+        .map((role) => {
+          const roleLabel = toUiRole(role);
+          return {
+            role,
+            roleLabel,
+            users: filteredUsers.filter((user) => toUiRole(user.role) === roleLabel),
+          };
+        })
+        .filter((group) => group.users.length > 0),
+    [filteredUsers],
+  );
 
   const selectedUser = users.find((user) => user.id === selectedUserId) ?? null;
 
@@ -159,6 +173,7 @@ export function AdminUsersClient({
           <Button
             type="button"
             disabled={!currentUser.isAdmin}
+            title={!currentUser.isAdmin ? "Only active admins can add users" : undefined}
             onClick={() => {
               setNewUserCredentials(null);
               setIsAddUserDialogOpen(true);
@@ -169,6 +184,14 @@ export function AdminUsersClient({
         </CardHeader>
 
         <CardContent className="flex flex-col gap-5">
+          {!currentUser.isLoading &&
+          currentUser.isAuthenticated &&
+          !currentUser.isAdmin ? (
+            <p className="text-xs text-muted-foreground">
+              Some actions are disabled because your account does not have active
+              admin privileges.
+            </p>
+          ) : null}
           {errorMessage ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {errorMessage}
@@ -197,84 +220,157 @@ export function AdminUsersClient({
               <p className="font-mono">
                 Temporary password: {newUserCredentials.temporaryPassword}
               </p>
+              <p className="mt-2 text-xs text-emerald-800/90 dark:text-emerald-200/90">
+                Share credentials securely and require a password reset on first sign
+                in.
+              </p>
             </div>
           ) : null}
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <Input
-              type="search"
-              placeholder="Search by name or email"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="users-search">Search Users</Label>
+              <Input
+                id="users-search"
+                type="search"
+                placeholder="Search by name or email"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
 
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {allRoles.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {role}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="users-role-filter">Role</Label>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger id="users-role-filter">
+                  <SelectValue placeholder="Filter by role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {allRoles.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {role}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {allStatuses.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="users-status-filter">Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger id="users-status-filter">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {allStatuses.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="overflow-hidden rounded-md border">
-            <ul>
-              {filteredUsers.map((user) => (
-                <li key={user.id} className="border-b last:border-b-0">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedUserId(user.id)}
-                    className="w-full px-4 py-3 text-left hover:bg-muted/40"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="size-8">
-                          <AvatarFallback>{roleToInitials(user.full_name)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold">{user.full_name}</p>
-                          <p className="text-sm text-muted-foreground">{user.email}</p>
+          {filteredUsers.length === 0 ? (
+            <div className="overflow-hidden rounded-md border">
+              <p className="px-4 py-6 text-muted-foreground">
+                No users matched your search and filters.
+              </p>
+            </div>
+          ) : roleFilter === "All roles" ? (
+            <div className="space-y-4">
+              {groupedUsersByRole.map((group) => (
+                <div key={group.role} className="overflow-hidden rounded-md border">
+                  <div className="border-b bg-muted/35 px-4 py-2">
+                    <p className="text-sm font-semibold">{group.roleLabel}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {group.users.length} {group.users.length === 1 ? "user" : "users"}
+                    </p>
+                  </div>
+                  <ul>
+                    {group.users.map((user) => (
+                      <li key={user.id} className="border-b last:border-b-0">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUserId(user.id)}
+                          className="w-full px-4 py-3 text-left hover:bg-muted/40"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="size-8">
+                                <AvatarFallback>{roleToInitials(user.full_name)}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-semibold">{user.full_name}</p>
+                                <p className="text-sm text-muted-foreground">{user.email}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{toUiRole(user.role)}</Badge>
+                              <Badge
+                                variant={user.is_active ? "secondary" : "outline"}
+                                className={
+                                  user.is_active
+                                    ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                    : "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                                }
+                              >
+                                {user.is_active ? "Active" : "Deactivated"}
+                              </Badge>
+                            </div>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-md border">
+              <ul>
+                {filteredUsers.map((user) => (
+                  <li key={user.id} className="border-b last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUserId(user.id)}
+                      className="w-full px-4 py-3 text-left hover:bg-muted/40"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-8">
+                            <AvatarFallback>{roleToInitials(user.full_name)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-semibold">{user.full_name}</p>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{toUiRole(user.role)}</Badge>
+                          <Badge
+                            variant={user.is_active ? "secondary" : "outline"}
+                            className={
+                              user.is_active
+                                ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                : "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                            }
+                          >
+                            {user.is_active ? "Active" : "Deactivated"}
+                          </Badge>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{toUiRole(user.role)}</Badge>
-                        <Badge variant={user.is_active ? "secondary" : "destructive"}>
-                          {user.is_active ? "Active" : "Deactivated"}
-                        </Badge>
-                      </div>
-                    </div>
-                  </button>
-                </li>
-              ))}
-              {filteredUsers.length === 0 && (
-                <li className="px-4 py-6 text-muted-foreground">
-                  No users matched your search and filters.
-                </li>
-              )}
-            </ul>
-          </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -318,7 +414,7 @@ export function AdminUsersClient({
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Quick Actions</CardTitle>
+                  <CardTitle className="text-base">Account Security Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-2">
                   {resetPasswordCredentials ? (
@@ -331,6 +427,10 @@ export function AdminUsersClient({
                       </p>
                       <p className="font-mono">
                         New password: {resetPasswordCredentials.temporaryPassword}
+                      </p>
+                      <p className="mt-2 text-xs text-emerald-800/90 dark:text-emerald-200/90">
+                        Share credentials securely and require immediate password
+                        rotation.
                       </p>
                     </div>
                   ) : null}

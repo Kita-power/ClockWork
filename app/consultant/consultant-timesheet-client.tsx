@@ -999,7 +999,7 @@ export function ConsultantTimesheetClient({
 
           <div className="grid gap-3 sm:max-w-xs">
             <label className="text-sm font-medium" htmlFor="projectCode">
-              Project code
+              Project
             </label>
             <Select
               value={selectedProjectCode}
@@ -1018,7 +1018,7 @@ export function ConsultantTimesheetClient({
               <SelectContent>
                 {assignedProjects.map((project) => (
                   <SelectItem key={project.id} value={normalizeProjectCode(project.code)}>
-                    {normalizeProjectCode(project.code)} - {project.name}
+                    {project.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1333,7 +1333,7 @@ export function ConsultantTimesheetClient({
 
           {hasProjectCodeValidationError ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              Select a project code for this weekly timesheet.
+              Select a project for this weekly timesheet.
             </p>
           ) : null}
 

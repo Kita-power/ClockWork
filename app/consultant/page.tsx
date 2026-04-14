@@ -74,6 +74,10 @@ function normalizeMonthValue(month?: string): string {
   return /^\d{4}-\d{2}$/.test(month) ? month : "";
 }
 
+function normalizeProjectCode(value: string): string {
+  return value.trim().toUpperCase();
+}
+
 type ConsultantPageProps = {
   searchParams: Promise<{
     month?: string;
@@ -97,7 +101,16 @@ async function ConsultantPageContent({
 
   try {
     const params = await searchParams;
-    const timesheets = await consultantService.listTimesheets();
+    const [timesheets, assignedProjects] = await Promise.all([
+      consultantService.listTimesheets(),
+      consultantService.listAssignedProjectsForCurrentConsultant(),
+    ]);
+    const projectNameByCode = new Map(
+      assignedProjects.map((project) => [
+        normalizeProjectCode(project.code),
+        project.name,
+      ]),
+    );
     const selectedMonth = normalizeMonthValue(params.month);
     const statsMonth = selectedMonth || getCurrentIsoMonth();
 
@@ -202,7 +215,7 @@ async function ConsultantPageContent({
                 <TableHeader className="sticky top-0 z-20 bg-card">
                   <TableRow>
                     <TableHead className="bg-card">Week</TableHead>
-                    <TableHead className="bg-card">Project Code</TableHead>
+                    <TableHead className="bg-card">Project</TableHead>
                     <TableHead className="bg-card">Status</TableHead>
                     <TableHead className="bg-card">Total Hours</TableHead>
                     <TableHead className="bg-card">Last Updated</TableHead>
@@ -235,7 +248,10 @@ async function ConsultantPageContent({
                               {formatDate(timesheet.weekStart)} to {formatDate(timesheet.weekEnd)}
                             </TableCell>
                             <TableCell className="font-medium">
-                              {timesheet.projectCode || "-"}
+                              {timesheet.projectCode
+                                ? projectNameByCode.get(normalizeProjectCode(timesheet.projectCode)) ??
+                                  timesheet.projectCode
+                                : "-"}
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline" className={getStatusBadgeClassName(displayStatus)}>

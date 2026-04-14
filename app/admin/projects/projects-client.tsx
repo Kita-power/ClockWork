@@ -185,6 +185,7 @@ export function AdminProjectsClient({
         <Button
           type="button"
           disabled={!currentUser.isAdmin}
+          title={!currentUser.isAdmin ? "Only active admins can add projects" : undefined}
           onClick={() => setIsAddProjectDialogOpen(true)}
         >
           Add Project
@@ -211,24 +212,31 @@ export function AdminProjectsClient({
         ) : null}
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Input
-            type="search"
-            placeholder="Search projects"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="All statuses">All statuses</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Deactivated">Deactivated</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="projects-search">Search Projects</Label>
+            <Input
+              id="projects-search"
+              type="search"
+              placeholder="Search by project name or code"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="projects-status-filter">Status</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger id="projects-status-filter">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="All statuses">All statuses</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Deactivated">Deactivated</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="rounded-md border">
@@ -244,44 +252,56 @@ export function AdminProjectsClient({
             </TableHeader>
             <TableBody>
               {filteredProjects.map((project) => (
-                <TableRow
-                  key={project.id}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedProjectId(project.id)}
-                >
+                <TableRow key={project.id}>
                   <TableCell className="font-semibold">{project.name}</TableCell>
                   <TableCell className="font-mono text-xs">{project.code}</TableCell>
                   <TableCell>{project.consultant_count}</TableCell>
                   <TableCell>
-                    <Badge variant={project.is_active ? "secondary" : "outline"}>
+                    <Badge
+                      variant={project.is_active ? "secondary" : "outline"}
+                      className={
+                        project.is_active
+                          ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                          : "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                      }
+                    >
                       {project.is_active ? "Active" : "Deactivated"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant={project.is_active ? "destructive" : "secondary"}
-                      size="sm"
-                      disabled={isPending || !currentUser.isAdmin}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedProjectId(project.id);
-                        setErrorMessage(null);
-                        startTransition(async () => {
-                          const result = await setAdminProjectActiveAction({
-                            projectId: project.id,
-                            isActive: !project.is_active,
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedProjectId(project.id)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={project.is_active ? "destructive" : "secondary"}
+                        size="sm"
+                        disabled={isPending || !currentUser.isAdmin}
+                        onClick={() => {
+                          setSelectedProjectId(project.id);
+                          setErrorMessage(null);
+                          startTransition(async () => {
+                            const result = await setAdminProjectActiveAction({
+                              projectId: project.id,
+                              isActive: !project.is_active,
+                            });
+                            if (!result.ok) {
+                              setErrorMessage(result.error);
+                              return;
+                            }
+                            router.refresh();
                           });
-                          if (!result.ok) {
-                            setErrorMessage(result.error);
-                            return;
-                          }
-                          router.refresh();
-                        });
-                      }}
-                    >
-                      {project.is_active ? "Deactivate" : "Reactivate"}
-                    </Button>
+                        }}
+                      >
+                        {project.is_active ? "Deactivate" : "Reactivate"}
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -330,7 +350,7 @@ export function AdminProjectsClient({
                   <p className="mt-1 font-semibold">{selectedProject.consultant_count}</p>
                   <div className="mt-3 space-y-2">
                     {isLoadingConsultants ? (
-                      <p className="text-sm text-muted-foreground">Loading consultants...</p>
+                      <p className="text-sm text-muted-foreground">Loading consultants…</p>
                     ) : assignedConsultants.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
                         No consultants assigned yet.
@@ -394,7 +414,7 @@ export function AdminProjectsClient({
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Quick Actions</CardTitle>
+                  <CardTitle className="text-base">Project Assignment and Status</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   <div className="flex flex-col gap-2">
@@ -475,6 +495,11 @@ export function AdminProjectsClient({
                       ? "Deactivate Project"
                       : "Reactivate Project"}
                   </Button>
+                  {!currentUser.isAdmin ? (
+                    <p className="text-xs text-muted-foreground">
+                      Only active admins can change project status.
+                    </p>
+                  ) : null}
                 </CardContent>
               </Card>
             </div>

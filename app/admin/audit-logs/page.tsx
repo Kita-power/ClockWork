@@ -4,6 +4,7 @@ import { actionTypeFilters } from "../mock-data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -81,37 +82,57 @@ export default function AdminAuditLogsPage() {
             type.
           </CardDescription>
         </div>
-        <Button type="button" variant="secondary">
-          Export Logs
+        <Button type="button" variant="secondary" disabled title="Export is not available yet">
+          Export Logs (Soon)
         </Button>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <Input type="text" placeholder="Filter by user" />
-          <Input type="date" />
-          <Input type="date" />
-          <Select defaultValue={actionTypeFilters[0]}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {actionTypeFilters.map((actionType) => (
-                  <SelectItem key={actionType} value={actionType}>
-                    {actionType}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="audit-actor-search">Actor</Label>
+            <Input
+              id="audit-actor-search"
+              type="text"
+              placeholder="Search by actor name or email"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="audit-date-from">From</Label>
+            <Input id="audit-date-from" type="date" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="audit-date-to">To</Label>
+            <Input id="audit-date-to" type="date" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="audit-action-type">Action Type</Label>
+            <Select defaultValue={actionTypeFilters[0]}>
+              <SelectTrigger id="audit-action-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {actionTypeFilters.map((actionType) => (
+                    <SelectItem key={actionType} value={actionType}>
+                      {actionType}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+        <p className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-900 dark:text-sky-200">
+          Export is not available yet. Use filters to narrow the on-screen audit
+          history.
+        </p>
 
         <Suspense fallback={<AuditLogsTableLoading />}>
           <AuditLogsTableSection />
         </Suspense>
 
-        <p className="rounded-md border bg-muted/30 p-4 text-sm text-muted-foreground">
+        <p className="rounded-md border border-sky-500/20 bg-sky-500/5 p-4 text-sm text-sky-900 dark:text-sky-200">
           Captured events include account and project changes, role assignments,
           timesheet submissions/approvals/rejections/exports, and finance
           processing timestamps (including late processing markers).
