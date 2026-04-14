@@ -57,6 +57,14 @@ function getTimesheetBadgeClassName(status: LocalTimesheet["status"]) {
   return "border-amber-600/30 bg-amber-500/15 text-amber-700 dark:text-amber-300";
 }
 
+function formatDate(value: string): string {
+  return new Date(`${value}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export function ManagerDashboardClient({
   initialTimesheets,
 }: {
@@ -99,7 +107,7 @@ export function ManagerDashboardClient({
       const matchesSearch =
         !q ||
         t.consultantName.toLowerCase().includes(q) ||
-        t.projectName.toLowerCase().includes(q) ||
+        (t.projectName ?? "").toLowerCase().includes(q) ||
         t.projectCode.toLowerCase().includes(q) ||
         t.id.toLowerCase().includes(q) ||
         t.status.toLowerCase().includes(q);
@@ -220,7 +228,7 @@ export function ManagerDashboardClient({
                             {t.projectName || t.projectCode || "-"}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {t.weekStart} → {t.weekEnd}
+                            {formatDate(t.weekStart)} to {formatDate(t.weekEnd)}
                           </TableCell>
                           <TableCell className="text-right">{t.totalHours}</TableCell>
                           <TableCell>
@@ -271,7 +279,7 @@ export function ManagerDashboardClient({
                           {t.projectName || t.projectCode || "-"}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {t.weekStart} → {t.weekEnd}
+                          {formatDate(t.weekStart)} to {formatDate(t.weekEnd)}
                         </TableCell>
                         <TableCell className="text-right">{t.totalHours}</TableCell>
                         <TableCell>

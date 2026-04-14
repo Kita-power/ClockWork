@@ -48,10 +48,24 @@ function canRejectTimesheet(status: ManagerTimesheetSummary["status"]) {
   return status === "Submitted" || status === "Submitted Late";
 }
 
-function formatSubmittedAt(value: string) {
+function formatDate(value: string): string {
+  return new Date(`${value}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 export function ManagerTimesheetDetailClient({
@@ -121,13 +135,13 @@ export function ManagerTimesheetDetailClient({
             <span className="font-medium">Project:</span> {timesheet.projectName || timesheet.projectCode || "-"}
           </div>
           <div>
-            <span className="font-medium">Week:</span> {timesheet.weekStart} to {timesheet.weekEnd}
+            <span className="font-medium">Week:</span> {formatDate(timesheet.weekStart)} to {formatDate(timesheet.weekEnd)}
           </div>
           <div>
             <span className="font-medium">Total Hours:</span> {timesheet.totalHours}
           </div>
           <div>
-            <span className="font-medium">Submitted At:</span> {formatSubmittedAt(timesheet.submittedAt)}
+            <span className="font-medium">Submitted At:</span> {formatDateTime(timesheet.submittedAt)}
           </div>
           <div className="flex items-center gap-2">
             <span className="font-medium">Status:</span>
@@ -160,7 +174,7 @@ export function ManagerTimesheetDetailClient({
               {(timesheet.entries ?? []).map((entry, index) => (
                 <TableRow key={`${entry.date}-${index}`}>
                   <TableCell>{entry.dayLabel}</TableCell>
-                  <TableCell>{entry.date}</TableCell>
+                  <TableCell>{formatDate(entry.date)}</TableCell>
                   <TableCell className="text-right">{entry.hours}</TableCell>
                   <TableCell>{entry.description || "-"}</TableCell>
                 </TableRow>
