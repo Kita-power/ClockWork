@@ -1,4 +1,4 @@
-# Clockwork
+# ClockWork
 
 A web application built with Next.js and Supabase for authentication and data management.
 
@@ -14,7 +14,7 @@ A web application built with Next.js and Supabase for authentication and data ma
 
 ## PWA Support
 
-- Clockwork is configured as an installable Progressive Web App (PWA) via an App Router manifest.
+- ClockWork is configured as an installable Progressive Web App (PWA) via an App Router manifest.
 - Placeholder app icons are available at `public/icon-192x192.png` and `public/icon-512x512.png`.
 - Current scope is installability only: no offline caching/service worker behavior is enabled yet.
 

@@ -66,7 +66,7 @@ export function LoginForm({
     >
       <div className="flex flex-col items-center gap-4 text-center">
         <div className="flex items-center justify-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">Clockwork</h1>
+          <h1 className="clockwork-branding text-3xl font-semibold tracking-tight">ClockWork</h1>
           <span aria-hidden="true" className="text-3xl leading-none text-muted-foreground">
             |
           </span>

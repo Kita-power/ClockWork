@@ -326,7 +326,7 @@ export function RoleTopbarLayout({
               aria-label="Go to overview"
               className="inline-flex items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <h1 className="text-3xl font-semibold tracking-tight">Clockwork</h1>
+              <h1 className="clockwork-branding text-3xl font-semibold tracking-tight">ClockWork</h1>
               <span aria-hidden="true" className="text-3xl leading-none text-muted-foreground">
                 |
               </span>

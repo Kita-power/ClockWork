@@ -28,7 +28,7 @@ export default function AdminLayout({
       <header className="bg-background">
         <div className="mx-auto flex w-full max-w-[1400px] items-start justify-between gap-4 px-5 py-4 md:px-8">
           <div className="min-w-0">
-            <h1 className="text-3xl font-semibold tracking-tight">Clockwork</h1>
+            <h1 className="clockwork-branding text-3xl font-semibold tracking-tight">ClockWork</h1>
             <Tabs value={pathname} className="mt-3">
               <TabsList className="h-auto flex-wrap">
                 {tabs.map((tab) => (

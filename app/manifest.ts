@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Clockwork",
-    short_name: "Clockwork",
-    description: "Clockwork web application",
+    name: "ClockWork",
+    short_name: "ClockWork",
+    description: "ClockWork web application",
     start_url: "/",
     scope: "/",
     display: "standalone",

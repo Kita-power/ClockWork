@@ -416,6 +416,11 @@ select:focus-visible {
 }
 
 @layer utilities {
+  .dark .clockwork-branding,
+  .theme-system.theme-system-dark .clockwork-branding {
+    color: var(--color-brand-green);
+  }
+
   .display-md {
     font-family: var(--font-display), sans-serif;
     font-size: clamp(1.95rem, 1.55rem + 1.2vw, 2.5rem);
