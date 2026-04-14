@@ -26,16 +26,6 @@ function formatDate(date: string): string {
   });
 }
 
-function formatDateTime(date: string): string {
-  return new Date(date).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 function formatTimesheetDeadline(weekStart: string): string {
   const deadlineDate = new Date(`${weekStart}T00:00:00`);
   deadlineDate.setDate(deadlineDate.getDate() + 7);
@@ -234,7 +224,7 @@ async function ConsultantPageContent({
 
             <div className="min-h-0 flex-1 overflow-auto rounded-md border">
               <div className="h-full">
-                <Table className="w-full md:min-w-[860px]">
+                <Table className="w-full md:min-w-[760px]">
                 <TableHeader className="sticky top-0 z-20 hidden bg-card md:table-header-group">
                   <TableRow>
                     <TableHead className="bg-card">Week</TableHead>
@@ -242,21 +232,20 @@ async function ConsultantPageContent({
                     <TableHead className="bg-card">Status</TableHead>
                     <TableHead className="bg-card">Total Hours</TableHead>
                     <TableHead className="bg-card">Deadline</TableHead>
-                    <TableHead className="bg-card">Last Updated</TableHead>
                     <TableHead className="bg-card text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredTimesheets.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
                         No timesheets found for this month.
                       </TableCell>
                     </TableRow>
                   ) : (
                     groupedTimesheets.flatMap(([monthKey, monthTimesheets]) => [
                       <TableRow key={`month-${monthKey}`} className="bg-muted/40 hover:bg-muted/40">
-                        <TableCell colSpan={7} className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <TableCell colSpan={6} className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           {formatMonthLabel(monthKey)}
                         </TableCell>
                       </TableRow>,
@@ -307,12 +296,6 @@ async function ConsultantPageContent({
                                 Deadline
                               </p>
                               {formatTimesheetDeadline(timesheet.weekStart)}
-                            </TableCell>
-                            <TableCell className="py-3 align-top whitespace-normal md:py-2">
-                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
-                                Last Updated
-                              </p>
-                              {formatDateTime(timesheet.updatedAt)}
                             </TableCell>
                             <TableCell className="py-3 align-top whitespace-normal text-left md:py-2 md:text-right">
                               <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">

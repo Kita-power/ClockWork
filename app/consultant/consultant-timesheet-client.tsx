@@ -311,6 +311,16 @@ function formatDate(date: string): string {
   });
 }
 
+function formatDateTime(date: string): string {
+  return new Date(date).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function getStatusBadgeClassName(status: string): string {
   if (status === "approved" || status === "approved_late") {
     return "border-emerald-600/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
@@ -925,7 +935,7 @@ export function ConsultantTimesheetClient({
               Enter billable work for the selected week, save as draft, and submit when complete.
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end gap-1">
             {!isReadOnly ? (
               <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
                 <DialogTrigger asChild>
@@ -952,12 +962,17 @@ export function ConsultantTimesheetClient({
                 </DialogContent>
               </Dialog>
             ) : null}
-            <Badge
-              variant="outline"
-              className={getStatusBadgeClassName(displayStatus)}
-            >
-              {statusLabel}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={getStatusBadgeClassName(displayStatus)}
+              >
+                {statusLabel}
+              </Badge>
+              <p className="text-xs text-muted-foreground">
+                Updated {formatDateTime(timesheet.updatedAt)}
+              </p>
+            </div>
           </div>
         </CardHeader>
 

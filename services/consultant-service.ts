@@ -32,6 +32,7 @@ export type WeeklyTimesheetRecord = {
   weekStart: string;
   weekEnd: string;
   status: TimesheetStatus;
+  updatedAt: string;
   entries: WeeklyTimesheetEntry[];
   managerComment?: string;
 };
@@ -308,6 +309,7 @@ function toWeeklyRecordFromDb(
     weekStart: row.week_start_date,
     weekEnd: row.week_end_date,
     status: normalizeTimesheetStatus(row.status),
+    updatedAt: row.updated_at ?? row.submitted_at ?? row.created_at ?? new Date().toISOString(),
     entries: weekEntries,
     managerComment,
   };
@@ -588,6 +590,7 @@ function buildDraftTimesheet(
     weekStart: normalizedWeekStart,
     weekEnd: toIsoDate(addDays(startDate, 6)),
     status: "draft",
+    updatedAt: new Date().toISOString(),
     entries: buildWeekEntries(normalizedWeekStart),
   };
 }
