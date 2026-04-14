@@ -36,6 +36,29 @@ function formatDateTime(date: string): string {
   });
 }
 
+function formatTimesheetDeadline(weekStart: string): string {
+  const deadlineDate = new Date(`${weekStart}T00:00:00`);
+  deadlineDate.setDate(deadlineDate.getDate() + 7);
+
+  const millisecondsRemaining = deadlineDate.getTime() - Date.now();
+  const oneDayInMilliseconds = 24 * 60 * 60 * 1000;
+
+  if (millisecondsRemaining > 0 && millisecondsRemaining <= oneDayInMilliseconds) {
+    const totalMinutesRemaining = Math.floor(millisecondsRemaining / (60 * 1000));
+    const hoursRemaining = Math.floor(totalMinutesRemaining / 60);
+    const minutesRemaining = totalMinutesRemaining % 60;
+    return `${hoursRemaining}h ${minutesRemaining}m left`;
+  }
+
+  return deadlineDate.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function formatMonthLabel(isoMonth: string): string {
   const [year, month] = isoMonth.split("-").map((value) => Number.parseInt(value, 10));
   return new Date(year, month - 1, 1).toLocaleDateString("en-US", {
@@ -211,13 +234,14 @@ async function ConsultantPageContent({
 
             <div className="min-h-0 flex-1 overflow-auto rounded-md border">
               <div className="h-full">
-                <Table className="w-full md:min-w-[760px]">
+                <Table className="w-full md:min-w-[860px]">
                 <TableHeader className="sticky top-0 z-20 hidden bg-card md:table-header-group">
                   <TableRow>
                     <TableHead className="bg-card">Week</TableHead>
                     <TableHead className="bg-card">Project</TableHead>
                     <TableHead className="bg-card">Status</TableHead>
                     <TableHead className="bg-card">Total Hours</TableHead>
+                    <TableHead className="bg-card">Deadline</TableHead>
                     <TableHead className="bg-card">Last Updated</TableHead>
                     <TableHead className="bg-card text-right">Action</TableHead>
                   </TableRow>
@@ -225,14 +249,14 @@ async function ConsultantPageContent({
                 <TableBody>
                   {filteredTimesheets.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">
                         No timesheets found for this month.
                       </TableCell>
                     </TableRow>
                   ) : (
                     groupedTimesheets.flatMap(([monthKey, monthTimesheets]) => [
                       <TableRow key={`month-${monthKey}`} className="bg-muted/40 hover:bg-muted/40">
-                        <TableCell colSpan={6} className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <TableCell colSpan={7} className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           {formatMonthLabel(monthKey)}
                         </TableCell>
                       </TableRow>,
@@ -277,6 +301,12 @@ async function ConsultantPageContent({
                                 Total Hours
                               </p>
                               {timesheet.totalHours.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="py-3 align-top whitespace-normal md:py-2">
+                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                                Deadline
+                              </p>
+                              {formatTimesheetDeadline(timesheet.weekStart)}
                             </TableCell>
                             <TableCell className="py-3 align-top whitespace-normal md:py-2">
                               <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
