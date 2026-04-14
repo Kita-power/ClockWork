@@ -8,6 +8,7 @@ export type TimesheetEntry = {
 export type ManagerTimesheetSummary = {
   id: string;
   consultantName: string;
+  projectName?: string;
   projectCode: string;
   weekStart: string;
   weekEnd: string;

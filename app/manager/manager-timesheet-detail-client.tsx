@@ -118,7 +118,7 @@ export function ManagerTimesheetDetailClient({
             <span className="font-medium">Consultant:</span> {timesheet.consultantName}
           </div>
           <div>
-            <span className="font-medium">Project:</span> {timesheet.projectCode}
+            <span className="font-medium">Project:</span> {timesheet.projectName || timesheet.projectCode || "-"}
           </div>
           <div>
             <span className="font-medium">Week:</span> {timesheet.weekStart} to {timesheet.weekEnd}
