@@ -99,6 +99,7 @@ export function ManagerDashboardClient({
       const matchesSearch =
         !q ||
         t.consultantName.toLowerCase().includes(q) ||
+        t.projectName.toLowerCase().includes(q) ||
         t.projectCode.toLowerCase().includes(q) ||
         t.id.toLowerCase().includes(q) ||
         t.status.toLowerCase().includes(q);
@@ -219,7 +220,9 @@ export function ManagerDashboardClient({
                       timesheetsNeedingApproval.map((t) => (
                         <TableRow key={t.id}>
                           <TableCell className="font-medium">{t.consultantName}</TableCell>
-                          <TableCell className="font-mono text-xs">{t.projectCode}</TableCell>
+                          <TableCell className="text-xs">
+                            {t.projectName || t.projectCode || "-"}
+                          </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {t.weekStart} → {t.weekEnd}
                           </TableCell>
@@ -268,7 +271,9 @@ export function ManagerDashboardClient({
                     {otherFilteredTimesheets.map((t) => (
                       <TableRow key={t.id}>
                         <TableCell className="font-medium">{t.consultantName}</TableCell>
-                        <TableCell className="font-mono text-xs">{t.projectCode}</TableCell>
+                        <TableCell className="text-xs">
+                          {t.projectName || t.projectCode || "-"}
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {t.weekStart} → {t.weekEnd}
                         </TableCell>

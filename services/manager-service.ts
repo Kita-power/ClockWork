@@ -12,6 +12,7 @@ export type TimesheetEntry = {
 export type ManagerTimesheetSummary = {
   id: string;
   consultantName: string;
+  projectName: string;
   projectCode: string;
   weekStart: string;
   weekEnd: string;
@@ -57,7 +58,7 @@ type DbTimesheetRow = {
   updated_at: string | null;
 };
 
-type DbProjectRow = { id: string; code: string };
+type DbProjectRow = { id: string; code: string; name: string };
 
 type DbTimeEntryRow = {
   entry_date: string;
@@ -195,16 +196,18 @@ async function assertTimesheetBelongsToManager(
   }
 }
 
-async function projectCodeById(projectIds: string[]): Promise<Map<string, string>> {
+async function projectDetailsById(
+  projectIds: string[],
+): Promise<Map<string, { code: string; name: string }>> {
   if (projectIds.length === 0) return new Map();
 
   const supabase = await createClient();
-  const { data, error } = await supabase.from("projects").select("id, code").in("id", projectIds);
+  const { data, error } = await supabase.from("projects").select("id, code, name").in("id", projectIds);
 
   if (error) throw new Error(error.message);
 
   const rows = (data ?? []) as DbProjectRow[];
-  return new Map(rows.map((r) => [r.id, r.code]));
+  return new Map(rows.map((r) => [r.id, { code: r.code, name: r.name }]));
 }
 
 export const managerService = {
@@ -249,12 +252,13 @@ export const managerService = {
     const projectIds = Array.from(
       new Set(managerVisibleRows.map((r) => r.project_id).filter((v): v is string => Boolean(v))),
     );
-    const codeByProjectId = await projectCodeById(projectIds);
+    const projectById = await projectDetailsById(projectIds);
 
     return managerVisibleRows.map((row) => ({
       id: row.id,
       consultantName: consultantNameById.get(row.consultant_id) ?? "Unknown",
-      projectCode: row.project_id ? codeByProjectId.get(row.project_id) ?? "" : "",
+      projectName: row.project_id ? projectById.get(row.project_id)?.name ?? "" : "",
+      projectCode: row.project_id ? projectById.get(row.project_id)?.code ?? "" : "",
       weekStart: row.week_start_date,
       weekEnd: row.week_end_date,
       totalHours: toNumber(row.total_hours),
@@ -284,14 +288,14 @@ export const managerService = {
     const typedRow = timesheetRow as DbTimesheetRow;
     await assertTimesheetBelongsToManager(managerId, typedRow.consultant_id);
 
-    const [{ data: consultantRow, error: consultantError }, codeByProjectId, entriesQuery, commentsQuery] =
+    const [{ data: consultantRow, error: consultantError }, projectById, entriesQuery, commentsQuery] =
       await Promise.all([
         supabase
           .from("users")
           .select("id, full_name")
           .eq("id", typedRow.consultant_id)
           .maybeSingle(),
-        projectCodeById(typedRow.project_id ? [typedRow.project_id] : []),
+        projectDetailsById(typedRow.project_id ? [typedRow.project_id] : []),
         supabase
           .from("time_entries")
           .select("entry_date, hours, notes")
@@ -324,7 +328,8 @@ export const managerService = {
     return {
       id: typedRow.id,
       consultantName: (consultantRow as { id: string; full_name: string } | null)?.full_name ?? "Unknown",
-      projectCode: typedRow.project_id ? codeByProjectId.get(typedRow.project_id) ?? "" : "",
+      projectName: typedRow.project_id ? projectById.get(typedRow.project_id)?.name ?? "" : "",
+      projectCode: typedRow.project_id ? projectById.get(typedRow.project_id)?.code ?? "" : "",
       weekStart: typedRow.week_start_date,
       weekEnd: typedRow.week_end_date,
       totalHours: toNumber(typedRow.total_hours),
