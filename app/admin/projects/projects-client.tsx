@@ -278,29 +278,6 @@ export function AdminProjectsClient({
                       >
                         View
                       </Button>
-                      <Button
-                        type="button"
-                        variant={project.is_active ? "destructive" : "secondary"}
-                        size="sm"
-                        disabled={isPending || !currentUser.isAdmin}
-                        onClick={() => {
-                          setSelectedProjectId(project.id);
-                          setErrorMessage(null);
-                          startTransition(async () => {
-                            const result = await setAdminProjectActiveAction({
-                              projectId: project.id,
-                              isActive: !project.is_active,
-                            });
-                            if (!result.ok) {
-                              setErrorMessage(result.error);
-                              return;
-                            }
-                            router.refresh();
-                          });
-                        }}
-                      >
-                        {project.is_active ? "Deactivate" : "Reactivate"}
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -471,30 +448,6 @@ export function AdminProjectsClient({
                     </div>
                   </div>
 
-                  <Button
-                    type="button"
-                    className="w-full"
-                    variant={selectedProject.is_active ? "destructive" : "secondary"}
-                    disabled={isPending || !currentUser.isAdmin}
-                    onClick={() => {
-                      setErrorMessage(null);
-                      startTransition(async () => {
-                        const result = await setAdminProjectActiveAction({
-                          projectId: selectedProject.id,
-                          isActive: !selectedProject.is_active,
-                        });
-                        if (!result.ok) {
-                          setErrorMessage(result.error);
-                          return;
-                        }
-                        router.refresh();
-                      });
-                    }}
-                  >
-                    {selectedProject.is_active
-                      ? "Deactivate Project"
-                      : "Reactivate Project"}
-                  </Button>
                   {!currentUser.isAdmin ? (
                     <p className="text-xs text-muted-foreground">
                       Only active admins can change project status.
