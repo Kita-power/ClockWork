@@ -69,6 +69,10 @@ function formatDateTime(value: string): string {
   });
 }
 
+function formatHours(value: number): string {
+  return Number.isFinite(value) ? value.toFixed(2) : "0.00";
+}
+
 export function ManagerTimesheetDetailClient({
   timesheet,
 }: {
@@ -144,7 +148,8 @@ export function ManagerTimesheetDetailClient({
             <span className="font-medium">Week:</span> {formatDate(timesheet.weekStart)} to {formatDate(timesheet.weekEnd)}
           </div>
           <div>
-            <span className="font-medium">Total Hours:</span> {timesheet.totalHours}
+            <span className="font-medium">Total Hours:</span>{" "}
+            <span className="tabular-nums">{formatHours(timesheet.totalHours)}</span>
           </div>
           <div>
             <span className="font-medium">Submitted At:</span> {formatDateTime(timesheet.submittedAt)}
@@ -187,21 +192,24 @@ export function ManagerTimesheetDetailClient({
                     <TableRow>
                       <TableCell>{entry.dayLabel}</TableCell>
                       <TableCell>{formatDate(entry.date)}</TableCell>
-                      <TableCell className="text-right">{entry.hours.toFixed(2)}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatHours(entry.hours)}
+                      </TableCell>
                       <TableCell>
                         {hasTasks ? (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-auto px-2"
+                            className="h-auto px-2 font-medium tabular-nums"
                             onClick={() =>
                               setExpandedEntryIndex((current) =>
                                 current === index ? null : index,
                               )
                             }
                           >
-                            {taskCount} {taskCount === 1 ? "Task" : "Tasks"}
+                            <span className="tabular-nums">{taskCount}</span>{" "}
+                            {taskCount === 1 ? "Task" : "Tasks"}
                             <ChevronDown
                               className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                             />
@@ -232,7 +240,7 @@ export function ManagerTimesheetDetailClient({
                             <TableCell />
                             <TableCell />
                             <TableCell className="text-right font-medium tabular-nums">
-                              {task.hours.toFixed(2)}
+                              {formatHours(task.hours)}
                             </TableCell>
                             <TableCell className="pl-4 text-sm">{task.title}</TableCell>
                           </TableRow>
