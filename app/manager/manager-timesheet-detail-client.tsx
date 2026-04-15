@@ -83,6 +83,8 @@ export function ManagerTimesheetDetailClient({
   const [expandedEntryIndex, setExpandedEntryIndex] = useState<number | null>(null);
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const canReviewTimesheet =
+    canApproveTimesheet(timesheet.status) || canRejectTimesheet(timesheet.status);
   const showRejectCommentError =
     isRejecting && error === "A comment is required when rejecting a timesheet.";
 
@@ -257,34 +259,36 @@ export function ManagerTimesheetDetailClient({
           </div>
         ) : null}
 
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              setIsApproving((value) => !value);
-              setIsRejecting(false);
-              setError(null);
-            }}
-            disabled={!canManage || !canApproveTimesheet(timesheet.status)}
-          >
-            Approve
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => {
-              setIsRejecting((value) => !value);
-              setIsApproving(false);
-              setError(null);
-            }}
-            disabled={!canManage || !canRejectTimesheet(timesheet.status)}
-          >
-            Reject
-          </Button>
-        </div>
+        {canReviewTimesheet ? (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setIsApproving((value) => !value);
+                setIsRejecting(false);
+                setError(null);
+              }}
+              disabled={!canManage || !canApproveTimesheet(timesheet.status)}
+            >
+              Approve
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                setIsRejecting((value) => !value);
+                setIsApproving(false);
+                setError(null);
+              }}
+              disabled={!canManage || !canRejectTimesheet(timesheet.status)}
+            >
+              Reject
+            </Button>
+          </div>
+        ) : null}
 
-        {isApproving ? (
+        {canReviewTimesheet && isApproving ? (
           <div className="space-y-3 rounded-md border p-4">
             <p className="text-sm text-muted-foreground">
               Confirm that you have reviewed this timesheet and it is ready to be approved.
@@ -300,7 +304,7 @@ export function ManagerTimesheetDetailClient({
           </div>
         ) : null}
 
-        {isRejecting ? (
+        {canReviewTimesheet && isRejecting ? (
           <div className="space-y-3 rounded-md border p-4">
             <p className="text-sm text-muted-foreground">Comment (required)</p>
             <textarea
