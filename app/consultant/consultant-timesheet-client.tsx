@@ -449,6 +449,10 @@ export function ConsultantTimesheetClient({
 
   const hasAssignedProjects = assignedProjects.length > 0;
   const selectedProjectIsAssigned = assignedProjectCodes.has(selectedProjectCode);
+  const selectedProjectName =
+    assignedProjects.find(
+      (project) => normalizeProjectCode(project.code) === selectedProjectCode,
+    )?.name ?? selectedProjectCode;
 
   const hasProjectCodeValidationError = selectedProjectCode.length === 0;
   const hasUnassignedProjectValidationError =
@@ -1028,7 +1032,7 @@ export function ConsultantTimesheetClient({
           setSuccessMessage(result.message);
           appendNotification(
             createTimesheetSubmittedNotification({
-              projectCode: selectedProjectCode,
+              projectName: selectedProjectName,
               weekStart: timesheet.weekStart,
               weekEnd: timesheet.weekEnd,
               isLate: result.status === "submitted_late",
