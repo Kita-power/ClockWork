@@ -74,6 +74,23 @@ export function createTimesheetRejectedNotification(input: {
   };
 }
 
+export function createTimesheetProcessedNotification(input: {
+  projectName: string;
+  weekStart: string;
+  weekEnd: string;
+}): StoredNotification {
+  const weekRangeText = `${formatDateForNotification(input.weekStart)} to ${formatDateForNotification(input.weekEnd)}`;
+  const projectText = input.projectName.trim() || "your project";
+
+  return {
+    id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
+    title: "Timesheet Processed",
+    description: `Your timesheet for ${projectText} for the week of ${weekRangeText} has been processed by finance.`,
+    timestamp: new Date().toISOString(),
+    read: false,
+  };
+}
+
 export function loadNotifiedTimesheetIds(): Set<string> {
   if (typeof window === "undefined") {
     return new Set();
