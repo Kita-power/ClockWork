@@ -21,51 +21,54 @@ export function formatDateForNotification(date: string): string {
 }
 
 export function createTimesheetSubmittedNotification(input: {
-  projectCode: string;
+  projectName: string;
   weekStart: string;
   weekEnd: string;
   isLate?: boolean;
 }): StoredNotification {
   const submittedStatusText = input.isLate ? "submitted late" : "submitted";
   const weekRangeText = `${formatDateForNotification(input.weekStart)} to ${formatDateForNotification(input.weekEnd)}`;
+  const projectText = input.projectName.trim() || "your project";
 
   return {
     id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
     title: input.isLate ? "Timesheet Submitted Late" : "Timesheet Submitted",
-    description: `The timesheet for project code ${input.projectCode} for the week of ${weekRangeText} has been ${submittedStatusText}.`,
+    description: `The timesheet for ${projectText} for the week of ${weekRangeText} has been ${submittedStatusText}.`,
     timestamp: new Date().toISOString(),
     read: false,
   };
 }
 
 export function createTimesheetApprovedNotification(input: {
-  projectCode: string;
+  projectName: string;
   weekStart: string;
   weekEnd: string;
   isLate?: boolean;
 }): StoredNotification {
   const weekRangeText = `${formatDateForNotification(input.weekStart)} to ${formatDateForNotification(input.weekEnd)}`;
+  const projectText = input.projectName.trim() || "your project";
 
   return {
     id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
     title: input.isLate ? "Timesheet Approved Late" : "Timesheet Approved",
-    description: `Your timesheet for project code ${input.projectCode} for the week of ${weekRangeText} has been ${input.isLate ? "approved as a late submission" : "approved"} by your manager.`,
+    description: `Your timesheet for ${projectText} for the week of ${weekRangeText} has been ${input.isLate ? "approved as a late submission" : "approved"} by your manager.`,
     timestamp: new Date().toISOString(),
     read: false,
   };
 }
 
 export function createTimesheetRejectedNotification(input: {
-  projectCode: string;
+  projectName: string;
   weekStart: string;
   weekEnd: string;
 }): StoredNotification {
   const weekRangeText = `${formatDateForNotification(input.weekStart)} to ${formatDateForNotification(input.weekEnd)}`;
+  const projectText = input.projectName.trim() || "your project";
 
   return {
     id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
     title: "Timesheet Rejected",
-    description: `Your timesheet for project code ${input.projectCode} for the week of ${weekRangeText} has been rejected. Please review the feedback and resubmit.`,
+    description: `Your timesheet for ${projectText} for the week of ${weekRangeText} has been rejected. Please review the feedback and resubmit.`,
     timestamp: new Date().toISOString(),
     read: false,
   };

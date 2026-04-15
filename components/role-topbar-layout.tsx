@@ -33,9 +33,9 @@ type ConsultantTimesheetStatusRow = {
   project_id: string | null;
 };
 
-type ProjectCodeRow = {
+type ProjectNameRow = {
   id: string;
-  code: string;
+  name: string;
 };
 
 function getTimesheetStatusCacheStorageKey(userId: string): string {
@@ -150,7 +150,7 @@ export function RoleTopbarLayout({
     const maybeNotifyStatusChange = async (
       row: ConsultantTimesheetStatusRow,
       previousStatus: string | undefined,
-      projectCodeOverride?: string,
+      projectNameOverride?: string,
     ) => {
       const normalizedStatus = String(row.status ?? "").trim().toLowerCase();
 
@@ -170,28 +170,28 @@ export function RoleTopbarLayout({
         return;
       }
 
-      let projectCode = projectCodeOverride ?? "";
+      let projectName = projectNameOverride ?? "";
 
-      if (!projectCode && row.project_id) {
+      if (!projectName && row.project_id) {
         const { data: projectData, error: projectError } = await supabase
           .from("projects")
-          .select("code")
+          .select("name")
           .eq("id", row.project_id)
           .maybeSingle();
 
         if (!projectError) {
-          projectCode = projectData?.code ?? "";
+          projectName = projectData?.name ?? "";
         }
       }
 
-      if (!projectCode) {
+      if (!projectName) {
         return;
       }
 
       if (normalizedStatus === "approved" || normalizedStatus === "approved_late") {
         appendNotification(
           createTimesheetApprovedNotification({
-            projectCode,
+            projectName,
             weekStart: row.week_start_date,
             weekEnd: row.week_end_date,
             isLate: normalizedStatus === "approved_late",
@@ -202,7 +202,7 @@ export function RoleTopbarLayout({
       if (normalizedStatus === "rejected") {
         appendNotification(
           createTimesheetRejectedNotification({
-            projectCode,
+            projectName,
             weekStart: row.week_start_date,
             weekEnd: row.week_end_date,
           }),
@@ -224,17 +224,17 @@ export function RoleTopbarLayout({
       const projectIds = Array.from(
         new Set(rows.map((row) => row.project_id).filter((value): value is string => Boolean(value))),
       );
-      const projectCodeById = new Map<string, string>();
+      const projectNameById = new Map<string, string>();
 
       if (projectIds.length > 0) {
         const { data: projectData, error: projectError } = await supabase
           .from("projects")
-          .select("id, code")
+          .select("id, name")
           .in("id", projectIds);
 
         if (!projectError) {
-          for (const row of (projectData ?? []) as ProjectCodeRow[]) {
-            projectCodeById.set(row.id, row.code);
+          for (const row of (projectData ?? []) as ProjectNameRow[]) {
+            projectNameById.set(row.id, row.name);
           }
         }
       }
@@ -251,8 +251,8 @@ export function RoleTopbarLayout({
         }
 
         const previousStatus = previousCache[row.id];
-        const projectCode = row.project_id ? projectCodeById.get(row.project_id) ?? "" : "";
-        await maybeNotifyStatusChange(row, previousStatus, projectCode);
+        const projectName = row.project_id ? projectNameById.get(row.project_id) ?? "" : "";
+        await maybeNotifyStatusChange(row, previousStatus, projectName);
       }
 
       saveTimesheetStatusCache(userId, nextCache);
