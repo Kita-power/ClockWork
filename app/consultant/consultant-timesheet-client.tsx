@@ -73,6 +73,19 @@ type PendingTaskDraft = {
   attemptedSubmit: boolean;
 };
 
+function roundToTwoDecimals(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function isPendingTaskDraftHoursInvalid(draft: PendingTaskDraft): boolean {
+  if (draft.hours.trim().length === 0) {
+    return true;
+  }
+
+  const parsedHours = Number.parseFloat(draft.hours);
+  return Number.isNaN(parsedHours) || parsedHours <= 0 || parsedHours > 24;
+}
+
 function buildTaskId(entryDate: string, taskIndex: number): string {
   return `task-${entryDate}-${taskIndex + 1}`;
 }
@@ -85,7 +98,7 @@ function normalizeTask(task: WeeklyTimesheetTask, taskIndex: number, entryDate: 
   return {
     id: task.id.trim().length > 0 ? task.id : buildTaskId(entryDate, taskIndex),
     title: task.title,
-    hours: Number.isFinite(task.hours) ? task.hours : 0,
+    hours: Number.isFinite(task.hours) ? roundToTwoDecimals(task.hours) : 0,
   };
 }
 
@@ -364,6 +377,9 @@ export function ConsultantTimesheetClient({
   );
   const [expandedEntryIndex, setExpandedEntryIndex] = useState<number | null>(null);
   const [taskHoursDraftByKey, setTaskHoursDraftByKey] = useState<Record<string, string>>({});
+  const [editingTaskByKey, setEditingTaskByKey] = useState<Record<string, boolean>>({});
+  const [invalidEditedTaskTitleByKey, setInvalidEditedTaskTitleByKey] = useState<Record<string, boolean>>({});
+  const [invalidEditedTaskByKey, setInvalidEditedTaskByKey] = useState<Record<string, boolean>>({});
   const [pendingTaskDraftByEntry, setPendingTaskDraftByEntry] = useState<
     Record<number, PendingTaskDraft>
   >({});
@@ -445,6 +461,10 @@ export function ConsultantTimesheetClient({
     () => buildTimesheetSnapshot(timesheet, selectedProjectCode),
     [selectedProjectCode, timesheet],
   );
+
+  const hasPendingTaskDraft = Object.keys(pendingTaskDraftByEntry).length > 0;
+  const hasEditingTask = Object.values(editingTaskByKey).some(Boolean);
+  const hasUnsavedTaskEditor = hasPendingTaskDraft || hasEditingTask;
 
   const hasUnsavedChanges = !isReadOnly && currentSnapshot !== savedSnapshotRef.current;
 
@@ -563,6 +583,7 @@ export function ConsultantTimesheetClient({
     setSuccessMessage(null);
     setExpandedEntryIndex(null);
     setTaskHoursDraftByKey({});
+    setEditingTaskByKey({});
     setPendingTaskDraftByEntry({});
     setSelectedProjectCode(savedProjectCodeRef.current);
     setTimesheet(cloneTimesheetRecord(savedTimesheetRef.current));
@@ -679,6 +700,10 @@ export function ConsultantTimesheetClient({
   }
 
   function openTaskDraft(entryIndex: number): void {
+    if (hasUnsavedTaskEditor) {
+      return;
+    }
+
     setPendingTaskDraftByEntry((prev) => ({
       ...prev,
       [entryIndex]:
@@ -731,7 +756,7 @@ export function ConsultantTimesheetClient({
     }
 
     const parsedHours = Number.parseFloat(draft.hours);
-    if (Number.isNaN(parsedHours) || parsedHours < 0 || parsedHours > 24) {
+    if (Number.isNaN(parsedHours) || parsedHours <= 0 || parsedHours > 24) {
       updateTaskDraft(entryIndex, { attemptedSubmit: true });
       return;
     }
@@ -744,7 +769,7 @@ export function ConsultantTimesheetClient({
       {
         id: `task-${entryDate}-${Date.now()}`,
         title: normalizedTitle,
-        hours: parsedHours,
+        hours: roundToTwoDecimals(parsedHours),
       },
     ]);
 
@@ -766,7 +791,7 @@ export function ConsultantTimesheetClient({
           const maxAllowedHours = getTaskHoursLimit(tasks, taskIndex);
           const normalizedHours = Number.isNaN(patch.hours)
             ? 0
-            : Math.min(Math.max(patch.hours, 0), maxAllowedHours);
+            : roundToTwoDecimals(Math.min(Math.max(patch.hours, 0), maxAllowedHours));
 
           return {
             ...task,
@@ -781,7 +806,104 @@ export function ConsultantTimesheetClient({
   }
 
   function removeTaskFromEntry(entryIndex: number, taskIndex: number): void {
+    const task = timesheet.entries[entryIndex]?.tasks?.[taskIndex];
+    if (task) {
+      const taskKey = buildTaskDraftKey(entryIndex, task.id);
+      setEditingTaskByKey((prev) => {
+        const next = { ...prev };
+        delete next[taskKey];
+        return next;
+      });
+      setTaskHoursDraftByKey((prev) => {
+        const next = { ...prev };
+        delete next[taskKey];
+        return next;
+      });
+      setInvalidEditedTaskTitleByKey((prev) => {
+        const next = { ...prev };
+        delete next[taskKey];
+        return next;
+      });
+      setInvalidEditedTaskByKey((prev) => {
+        const next = { ...prev };
+        delete next[taskKey];
+        return next;
+      });
+    }
+
     updateEntryTasks(entryIndex, (tasks) => tasks.filter((_, currentTaskIndex) => currentTaskIndex !== taskIndex));
+  }
+
+  function saveEditedTask(taskKey: string): void {
+    const separatorIndex = taskKey.indexOf(":");
+    const entryIndex = Number.parseInt(taskKey.slice(0, separatorIndex), 10);
+    const taskId = taskKey.slice(separatorIndex + 1);
+    const task = timesheet.entries[entryIndex]?.tasks?.find((candidate) => candidate.id === taskId);
+
+    const isTitleInvalid = !task || task.title.trim().length === 0;
+    const isHoursInvalid = !task || task.hours <= 0 || task.hours > 24 || Number.isNaN(task.hours);
+
+    if (isTitleInvalid) {
+      setInvalidEditedTaskTitleByKey((prev) => ({
+        ...prev,
+        [taskKey]: true,
+      }));
+    }
+
+    if (isHoursInvalid) {
+      setInvalidEditedTaskByKey((prev) => ({
+        ...prev,
+        [taskKey]: true,
+      }));
+    }
+
+    if (isTitleInvalid || isHoursInvalid) {
+      return;
+    }
+
+    setInvalidEditedTaskTitleByKey((prev) => {
+      const next = { ...prev };
+      delete next[taskKey];
+      return next;
+    });
+
+    setInvalidEditedTaskByKey((prev) => {
+      const next = { ...prev };
+      delete next[taskKey];
+      return next;
+    });
+
+    setEditingTaskByKey((prev) => ({
+      ...prev,
+      [taskKey]: false,
+    }));
+
+    setTaskHoursDraftByKey((prev) => {
+      const next = { ...prev };
+      delete next[taskKey];
+      return next;
+    });
+  }
+
+  function clearAllTaskEditModes(): void {
+    setEditingTaskByKey({});
+    setTaskHoursDraftByKey({});
+    setInvalidEditedTaskTitleByKey({});
+    setInvalidEditedTaskByKey({});
+  }
+
+  function startEditingTask(taskKey: string, taskHours: number): void {
+    clearAllTaskEditModes();
+
+    setEditingTaskByKey((prev) => ({
+      ...prev,
+      [taskKey]: true,
+    }));
+
+    setTaskHoursDraftByKey((prev) => ({
+      ...prev,
+      [taskKey]: String(taskHours),
+    }));
   }
 
   function loadWeek(weekStart: string): void {
@@ -790,6 +912,7 @@ export function ConsultantTimesheetClient({
     setErrorMessage(null);
     setSuccessMessage(null);
     setExpandedEntryIndex(null);
+    setEditingTaskByKey({});
     setPendingTaskDraftByEntry({});
 
     startTransition(() => {
@@ -851,6 +974,7 @@ export function ConsultantTimesheetClient({
     setSuccessMessage(null);
     setExpandedEntryIndex(null);
     setTaskHoursDraftByKey({});
+    setEditingTaskByKey({});
     setPendingTaskDraftByEntry({});
     setSelectedProjectCode("");
     setTimesheet((prev) => buildClearedTimesheet(prev));
@@ -1135,7 +1259,7 @@ export function ConsultantTimesheetClient({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => openTaskDraft(index)}
-                                disabled={isReadOnly || isPending}
+                                disabled={isReadOnly || isPending || hasUnsavedTaskEditor}
                               >
                                 <Plus className="h-4 w-4" />
                                 Add task
@@ -1151,19 +1275,46 @@ export function ConsultantTimesheetClient({
                                 key={task.id}
                                 className="grid gap-3 rounded-lg border bg-background p-3 md:grid-cols-[minmax(0,1fr)_120px_auto]"
                               >
+                                {(() => {
+                                  const taskKey = buildTaskDraftKey(index, task.id);
+                                  const isEditingTask = Boolean(editingTaskByKey[taskKey]);
+
+                                  return (
+                                    <>
                                 <div className="grid gap-1">
                                   <label className="text-xs font-medium text-muted-foreground">
                                     Task
                                   </label>
                                   <Input
+                                    className={cn(
+                                      invalidEditedTaskTitleByKey[taskKey] && "border-destructive",
+                                    )}
                                     value={task.title}
                                     onChange={(event) =>
                                       updateTaskField(index, taskIndex, {
                                         title: event.target.value,
                                       })
                                     }
+                                    onBlur={() => {
+                                      const nextTitle = task.title.trim();
+
+                                      if (nextTitle.length > 0) {
+                                        setInvalidEditedTaskTitleByKey((prev) => {
+                                          if (!prev[taskKey]) return prev;
+                                          const next = { ...prev };
+                                          delete next[taskKey];
+                                          return next;
+                                        });
+                                      }
+                                    }}
+                                    onKeyDown={(event) => {
+                                      if (event.key === "Enter" && isEditingTask) {
+                                        event.preventDefault();
+                                        saveEditedTask(taskKey);
+                                      }
+                                    }}
                                     placeholder="Describe the task"
-                                    disabled={isReadOnly || isPending}
+                                    disabled={isReadOnly || isPending || !isEditingTask}
                                   />
                                 </div>
                                 <div className="grid gap-1">
@@ -1175,6 +1326,9 @@ export function ConsultantTimesheetClient({
                                     min={0}
                                     max={getTaskHoursLimit(entry.tasks ?? [], taskIndex)}
                                     step={0.25}
+                                    className={cn(
+                                      invalidEditedTaskByKey[taskKey] && "border-destructive",
+                                    )}
                                     value={
                                       taskHoursDraftByKey[
                                         buildTaskDraftKey(index, task.id)
@@ -1213,25 +1367,66 @@ export function ConsultantTimesheetClient({
                                         [draftKey]: rawValue,
                                       }));
 
+                                      setInvalidEditedTaskByKey((prev) => {
+                                        if (!prev[draftKey]) {
+                                          return prev;
+                                        }
+
+                                        const next = { ...prev };
+                                        delete next[draftKey];
+                                        return next;
+                                      });
+
                                       updateTaskField(index, taskIndex, {
                                         hours: Number.isNaN(nextHours) ? 0 : nextHours,
                                       });
                                     }}
-                                    disabled={isReadOnly || isPending}
+                                    onKeyDown={(event) => {
+                                      if (event.key === "Enter" && isEditingTask) {
+                                        event.preventDefault();
+                                        saveEditedTask(taskKey);
+                                      }
+                                    }}
+                                    disabled={isReadOnly || isPending || !isEditingTask}
                                   />
                                 </div>
                                 <div className="flex items-end justify-end">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removeTaskFromEntry(index, taskIndex)}
-                                    disabled={isReadOnly || isPending}
-                                    aria-label="Remove task"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (isEditingTask) {
+                                          saveEditedTask(taskKey);
+                                          return;
+                                        }
+
+                                        startEditingTask(taskKey, task.hours);
+                                      }}
+                                      disabled={
+                                        isReadOnly ||
+                                        isPending ||
+                                        (hasPendingTaskDraft && !isEditingTask)
+                                      }
+                                    >
+                                      {isEditingTask ? "Save" : "Edit"}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => removeTaskFromEntry(index, taskIndex)}
+                                      disabled={isReadOnly || isPending}
+                                      aria-label="Remove task"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </div>
+                                    </>
+                                  );
+                                })()}
                               </div>
                             ))}
 
@@ -1274,7 +1469,7 @@ export function ConsultantTimesheetClient({
                                     step={0.25}
                                     className={cn(
                                       pendingTaskDraftByEntry[index].attemptedSubmit &&
-                                        pendingTaskDraftByEntry[index].hours.trim().length === 0 &&
+                                        isPendingTaskDraftHoursInvalid(pendingTaskDraftByEntry[index]) &&
                                         "border-destructive",
                                     )}
                                     value={pendingTaskDraftByEntry[index].hours}
@@ -1298,7 +1493,7 @@ export function ConsultantTimesheetClient({
                                       updateTaskDraft(index, {
                                         hours: Number.isNaN(normalizedHours)
                                           ? currentDraft.hours
-                                          : String(Math.min(Math.max(normalizedHours, 0), availableHours)),
+                                          : String(roundToTwoDecimals(Math.min(Math.max(normalizedHours, 0), availableHours))),
                                       });
                                     }}
                                     onKeyDown={(event) => {
@@ -1313,11 +1508,12 @@ export function ConsultantTimesheetClient({
                                 <div className="flex items-end justify-end gap-1">
                                   <Button
                                     type="button"
+                                    variant="outline"
                                     size="sm"
                                     onClick={() => commitTaskDraft(index)}
                                     disabled={isReadOnly || isPending}
                                   >
-                                    Enter
+                                    Save
                                   </Button>
                                   <Button
                                     type="button"

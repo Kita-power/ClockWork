@@ -197,6 +197,10 @@ function toNumber(value: number | string | null | undefined): number {
   return 0;
 }
 
+function roundToTwoDecimals(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 function sumEntriesHours(entries: WeeklyTimesheetEntry[]): number {
   return entries.reduce((sum, entry) => sum + (Number.isFinite(entry.hours) ? entry.hours : 0), 0);
 }
@@ -213,7 +217,7 @@ function normalizeTaskForPersistence(
   return {
     id: task.id.trim().length > 0 ? task.id : `${entryDate}-${taskIndex + 1}`,
     title: task.title.trim(),
-    hours: Number.isFinite(task.hours) ? task.hours : 0,
+    hours: Number.isFinite(task.hours) ? roundToTwoDecimals(task.hours) : 0,
   };
 }
 
@@ -628,6 +632,20 @@ function validateTimesheetEntries(entries: WeeklyTimesheetEntry[]): void {
 
   if (hasTaskHoursOverflow) {
     throw new Error("Task hours for a day cannot exceed 24.");
+  }
+
+  const invalidTask = entries.find((entry) =>
+    (entry.tasks ?? []).some(
+      (task) =>
+        task.title.trim().length === 0 ||
+        !Number.isFinite(task.hours) ||
+        task.hours <= 0 ||
+        task.hours > 24,
+    ),
+  );
+
+  if (invalidTask) {
+    throw new Error("Each task must have a description and hours greater than 0 (max 24).");
   }
 
   const invalidRow = entries.find((entry) => {
