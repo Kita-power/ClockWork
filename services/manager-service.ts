@@ -7,6 +7,10 @@ export type TimesheetEntry = {
   date: string;
   hours: number;
   description: string;
+  tasks?: Array<{
+    title: string;
+    hours: number;
+  }>;
 };
 
 export type ManagerTimesheetSummary = {
@@ -125,38 +129,45 @@ function mapTimesheetStatus(row: DbTimesheetRow): ManagerTimesheetSummary["statu
   return "Submitted";
 }
 
-function parseEntryDescription(notes: string | null): string {
-  if (!notes) return "";
+function parseEntryDetails(notes: string | null): {
+  description: string;
+  tasks: Array<{ title: string; hours: number }>;
+} {
+  if (!notes) {
+    return { description: "", tasks: [] };
+  }
 
   try {
     const parsed = JSON.parse(notes) as {
       text?: unknown;
-      tasks?: Array<{ title?: unknown }>;
+      tasks?: Array<{ title?: unknown; hours?: unknown }>;
     };
 
-    const text = typeof parsed?.text === "string" ? parsed.text.trim() : "";
-    const taskTitles = Array.isArray(parsed?.tasks)
+    const description = typeof parsed?.text === "string" ? parsed.text.trim() : "";
+    const tasks = Array.isArray(parsed?.tasks)
       ? parsed.tasks
-          .map((task) => (typeof task?.title === "string" ? task.title.trim() : ""))
-          .filter((title) => title.length > 0)
+          .map((task) => {
+            const title = typeof task?.title === "string" ? task.title.trim() : "";
+            if (!title) return null;
+
+            return {
+              title,
+              hours: toNumber(
+                typeof task?.hours === "number" || typeof task?.hours === "string"
+                  ? task.hours
+                  : null,
+              ),
+            };
+          })
+          .filter((task): task is { title: string; hours: number } => task !== null)
       : [];
 
-    if (text.length > 0 && taskTitles.length > 0) {
-      return `${text}\nTasks: ${taskTitles.join(", ")}`;
-    }
-
-    if (text.length > 0) {
-      return text;
-    }
-
-    if (taskTitles.length > 0) {
-      return `Tasks: ${taskTitles.join(", ")}`;
-    }
+    return { description, tasks };
   } catch {
-    // fall through to plain-text note
+    // Fall through to plain-text note
   }
 
-  return notes;
+  return { description: notes, tasks: [] };
 }
 
 async function getAuthenticatedManagerId(): Promise<string | null> {
@@ -314,14 +325,19 @@ export const managerService = {
     if (commentsQuery.error) throw new Error(commentsQuery.error.message);
 
     const rawEntries = (entriesQuery.data ?? []) as DbTimeEntryRow[];
-    const entries: TimesheetEntry[] = rawEntries.map((entry) => ({
-      dayLabel: new Date(`${entry.entry_date}T00:00:00`).toLocaleDateString("en-US", {
-        weekday: "short",
-      }),
-      date: entry.entry_date,
-      hours: toNumber(entry.hours),
-      description: parseEntryDescription(entry.notes),
-    }));
+    const entries: TimesheetEntry[] = rawEntries.map((entry) => {
+      const parsed = parseEntryDetails(entry.notes);
+
+      return {
+        dayLabel: new Date(`${entry.entry_date}T00:00:00`).toLocaleDateString("en-US", {
+          weekday: "short",
+        }),
+        date: entry.entry_date,
+        hours: toNumber(entry.hours),
+        description: parsed.description,
+        tasks: parsed.tasks,
+      };
+    });
 
     const latestComment = ((commentsQuery.data ?? []) as DbTimesheetCommentRow[])[0];
 

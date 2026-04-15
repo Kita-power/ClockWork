@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { approveTimesheetAction, rejectTimesheetAction } from "./actions";
 import type { ManagerTimesheetSummary } from "@/services/manager-service";
@@ -79,8 +80,11 @@ export function ManagerTimesheetDetailClient({
 
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [expandedEntryIndex, setExpandedEntryIndex] = useState<number | null>(null);
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const showRejectCommentError =
+    isRejecting && error === "A comment is required when rejecting a timesheet.";
 
   async function onApprove() {
     setError(null);
@@ -167,18 +171,74 @@ export function ManagerTimesheetDetailClient({
                 <TableHead>Day</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Hours</TableHead>
-                <TableHead>Description</TableHead>
+                <TableHead>Tasks</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(timesheet.entries ?? []).map((entry, index) => (
-                <TableRow key={`${entry.date}-${index}`}>
-                  <TableCell>{entry.dayLabel}</TableCell>
-                  <TableCell>{formatDate(entry.date)}</TableCell>
-                  <TableCell className="text-right">{entry.hours}</TableCell>
-                  <TableCell>{entry.description || "-"}</TableCell>
-                </TableRow>
-              ))}
+              {(timesheet.entries ?? []).map((entry, index) => {
+                const taskCount = entry.tasks?.length ?? 0;
+                const hasTasks = taskCount > 0;
+                const isExpanded = expandedEntryIndex === index;
+
+                return (
+                  <Fragment key={`${entry.date}-${index}`}>
+                    <TableRow>
+                      <TableCell>{entry.dayLabel}</TableCell>
+                      <TableCell>{formatDate(entry.date)}</TableCell>
+                      <TableCell className="text-right">{entry.hours.toFixed(2)}</TableCell>
+                      <TableCell>
+                        {hasTasks ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto px-2"
+                            onClick={() =>
+                              setExpandedEntryIndex((current) =>
+                                current === index ? null : index,
+                              )
+                            }
+                          >
+                            {taskCount} {taskCount === 1 ? "Task" : "Tasks"}
+                            <ChevronDown
+                              className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                            />
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground">No tasks</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+
+                    {isExpanded && hasTasks && entry.description ? (
+                      <TableRow className="bg-muted/20">
+                        <TableCell />
+                        <TableCell />
+                        <TableCell className="text-right text-muted-foreground">Note</TableCell>
+                        <TableCell className="whitespace-pre-wrap pl-4 text-sm text-muted-foreground">
+                          {entry.description}
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+
+                    {isExpanded && hasTasks
+                      ? entry.tasks?.map((task, taskIndex) => (
+                          <TableRow
+                            key={`${entry.date}-${taskIndex}-${task.title}`}
+                            className="bg-muted/20"
+                          >
+                            <TableCell />
+                            <TableCell />
+                            <TableCell className="text-right font-medium tabular-nums">
+                              {task.hours.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="pl-4 text-sm">{task.title}</TableCell>
+                          </TableRow>
+                        ))
+                      : null}
+                  </Fragment>
+                );
+              })}
               {(timesheet.entries ?? []).length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-muted-foreground">
@@ -247,7 +307,11 @@ export function ManagerTimesheetDetailClient({
               value={comment}
               onChange={(event) => setComment(event.target.value)}
               placeholder="Explain what needs fixing."
-              className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={`min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 ${
+                showRejectCommentError
+                  ? "border-destructive focus-visible:ring-destructive"
+                  : "focus-visible:ring-ring"
+              }`}
               rows={4}
             />
             <div className="flex gap-2">
