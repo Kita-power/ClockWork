@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   appendNotification,
   createTimesheetApprovedNotification,
+  createTimesheetProcessedNotification,
   createTimesheetRejectedNotification,
   loadNotifications,
   NOTIFICATION_EVENT_NAME,
@@ -181,6 +182,7 @@ export function RoleTopbarLayout({
       if (
         normalizedStatus !== "approved" &&
         normalizedStatus !== "approved_late" &&
+        normalizedStatus !== "processed" &&
         normalizedStatus !== "rejected"
       ) {
         return;
@@ -222,6 +224,16 @@ export function RoleTopbarLayout({
       if (normalizedStatus === "rejected") {
         appendNotification(
           createTimesheetRejectedNotification({
+            projectName,
+            weekStart: row.week_start_date,
+            weekEnd: row.week_end_date,
+          }),
+        );
+      }
+
+      if (normalizedStatus === "processed") {
+        appendNotification(
+          createTimesheetProcessedNotification({
             projectName,
             weekStart: row.week_start_date,
             weekEnd: row.week_end_date,
