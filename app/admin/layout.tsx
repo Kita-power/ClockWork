@@ -1,72 +1,33 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useUser } from "@/hooks/use-user";
-import { formatRoleLabel } from "@/lib/format-role-label";
-import { TopbarUserMenu } from "@/components/topbar-user-menu";
-import { ThemeSwitcher } from "@/components/theme-switcher";
-import { Badge } from "@/components/ui/badge";
+import { Suspense } from "react";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdminLayoutClient } from "./admin-layout-client";
 
-const tabs = [
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/projects", label: "Projects" },
-  { href: "/admin/audit-logs", label: "Audit Logs" },
-];
-
-export default function AdminLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
-  const pathname = usePathname();
-  const { fullName, email, role, isLoading, isAuthenticated } = useUser();
-  const displayName = fullName.trim() || email || "User";
-
+function AdminLayoutFallback() {
   return (
     <main className="min-h-svh bg-muted/30">
       <header className="bg-background">
         <div className="mx-auto flex w-full max-w-[1400px] items-start justify-between gap-4 px-5 py-4 md:px-8">
-          <div className="min-w-0">
-            <h1 className="clockwork-branding text-3xl font-semibold tracking-tight">ClockWork</h1>
-            <Tabs value={pathname} className="mt-3">
-              <TabsList className="h-auto flex-wrap">
-                {tabs.map((tab) => (
-                  <TabsTrigger key={tab.href} value={tab.href} asChild>
-                    <Link href={tab.href}>{tab.label}</Link>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+          <div className="space-y-3">
+            <div className="h-9 w-48 animate-pulse rounded-md bg-muted" />
+            <div className="h-10 w-72 max-w-full animate-pulse rounded-md bg-muted" />
           </div>
-
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex items-center gap-2">
-              <ThemeSwitcher />
-              {isLoading ? (
-                <p className="text-sm font-semibold text-muted-foreground">Loading…</p>
-              ) : isAuthenticated ? (
-                <TopbarUserMenu userName={displayName} />
-              ) : (
-                <Link
-                  href="/auth/login"
-                  className="text-sm font-semibold underline underline-offset-4"
-                >
-                  Log in
-                </Link>
-              )}
-            </div>
-            <Badge variant="secondary">
-              {isLoading ? "…" : isAuthenticated ? formatRoleLabel(role) : "Guest"}
-            </Badge>
-          </div>
+          <div className="h-8 w-24 animate-pulse rounded-md bg-muted" />
         </div>
         <Separator />
       </header>
-
       <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-8 md:py-8">
-        <section>{children}</section>
+        <div className="h-64 animate-pulse rounded-md bg-muted/50" />
       </div>
     </main>
+  );
+}
+
+export default function AdminLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <Suspense fallback={<AdminLayoutFallback />}>
+      <AdminLayoutClient>{children}</AdminLayoutClient>
+    </Suspense>
   );
 }

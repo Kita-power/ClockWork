@@ -1,11 +1,15 @@
-import { RoleTopbarLayout } from "@/components/role-topbar-layout";
+import { Suspense } from "react";
+import {
+  RoleTopbarLayout,
+  RoleTopbarLayoutFallback,
+} from "@/components/role-topbar-layout";
 
 export default function ManagerLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <RoleTopbarLayout overviewHref="/manager">
-      {children}
-    </RoleTopbarLayout>
+    <Suspense fallback={<RoleTopbarLayoutFallback />}>
+      <RoleTopbarLayout overviewHref="/manager">{children}</RoleTopbarLayout>
+    </Suspense>
   );
 }

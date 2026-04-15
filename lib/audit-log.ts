@@ -52,7 +52,8 @@ export async function getAuditActorContext(): Promise<AuditActorContext> {
     .eq("id", actorId)
     .maybeSingle<{ role: string }>();
 
-  const actorRole = isKnownRole(roleRow?.role ?? "") ? roleRow.role : "unknown";
+  const role = roleRow?.role ?? "";
+  const actorRole = isKnownRole(role) ? role : "unknown";
   return { actorId, actorRole };
 }
 

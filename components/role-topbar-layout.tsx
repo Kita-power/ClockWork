@@ -93,6 +93,26 @@ type RoleTopbarLayoutProps = {
   children: React.ReactNode;
 };
 
+/** Shell shown while pathname-dependent UI streams (Cache Components / PPR). */
+export function RoleTopbarLayoutFallback() {
+  return (
+    <main className="flex h-svh flex-col overflow-hidden bg-muted/30">
+      <header className="shrink-0 bg-background">
+        <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-3 py-4 md:px-5">
+          <div className="h-8 w-40 animate-pulse rounded-md bg-muted" />
+          <div className="h-8 w-32 animate-pulse rounded-md bg-muted" />
+        </div>
+        <Separator />
+      </header>
+      <div className="mx-auto flex w-full max-w-[1400px] min-h-0 flex-1 flex-col overflow-hidden px-3 py-6 md:px-5 md:py-8">
+        <section className="min-h-0 flex-1 overflow-y-auto">
+          <div className="h-48 w-full animate-pulse rounded-md bg-muted/50" />
+        </section>
+      </div>
+    </main>
+  );
+}
+
 export function RoleTopbarLayout({
   overviewHref,
   children,

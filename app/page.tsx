@@ -1,9 +1,16 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { getRoleHomePath } from "@/lib/role-home-path";
 
-export default async function Home() {
+function HomeFallback() {
+  return <div className="min-h-svh bg-muted/30" aria-hidden />;
+}
+
+async function HomeRedirect() {
+  await connection();
   const supabase = await createClient();
   const {
     data: { user },
@@ -20,4 +27,13 @@ export default async function Home() {
     .maybeSingle();
 
   redirect(getRoleHomePath(profile?.role));
+  return null;
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<HomeFallback />}>
+      <HomeRedirect />
+    </Suspense>
+  );
 }

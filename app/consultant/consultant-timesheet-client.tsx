@@ -1,6 +1,14 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -568,7 +576,7 @@ export function ConsultantTimesheetClient({
     setTimesheet(cloneTimesheetRecord(savedTimesheetRef.current));
   }
 
-  function navigateAfterLeaveConfirmation(): void {
+  const navigateAfterLeaveConfirmation = useCallback(() => {
     if (!pendingNavigationHref) {
       return;
     }
@@ -577,7 +585,7 @@ export function ConsultantTimesheetClient({
     setIsLeaveDialogOpen(false);
     setPendingNavigationHref(null);
     router.push(href);
-  }
+  }, [pendingNavigationHref, router]);
 
   function discardChangesAndNavigate(): void {
     restoreSavedStateInEditor();
@@ -595,7 +603,7 @@ export function ConsultantTimesheetClient({
 
     setShouldNavigateAfterDiscard(false);
     navigateAfterLeaveConfirmation();
-  }, [currentSnapshot, shouldNavigateAfterDiscard]);
+  }, [currentSnapshot, shouldNavigateAfterDiscard, navigateAfterLeaveConfirmation]);
 
   function saveDraftThenNavigate(): void {
     if (!pendingNavigationHref) {
@@ -630,20 +638,6 @@ export function ConsultantTimesheetClient({
           setIsLeaveDialogOpen(false);
         });
     });
-  }
-
-  function updateEntry(
-    index: number,
-    patch: Partial<WeeklyTimesheetEntry>,
-  ): void {
-    if (isReadOnly) return;
-
-    setTimesheet((prev) => ({
-      ...prev,
-      entries: prev.entries.map((entry, entryIndex) =>
-        entryIndex === index ? { ...entry, ...patch } : entry,
-      ),
-    }));
   }
 
   function updateEntryTasks(
